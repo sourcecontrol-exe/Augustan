@@ -1,0 +1,1 @@
+# Handles connecting and fetching data from exchanges.

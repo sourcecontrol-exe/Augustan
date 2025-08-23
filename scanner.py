@@ -1,0 +1,1 @@
+# The logic for scanning markets and finding opportunities.
