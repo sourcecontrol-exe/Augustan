@@ -1,3 +1,19 @@
+import json
+import os
+
+def load_active_config():
+    """Load the active configuration from JSON file"""
+    config_path = os.path.join(os.path.dirname(__file__), 'active_config.json')
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: {config_path} not found. Using default values.")
+        return {}
+
+# Load active configuration
+ACTIVE_CONFIG = load_active_config()
+
 # Trading Timeframes
 TIMEFRAMES = {
     '1m': '1m',
@@ -17,8 +33,8 @@ TIMEFRAMES = {
     '1M': '1M'
 }
 
-# Default timeframe
-DEFAULT_TIMEFRAME = '3m'
+# Default timeframe from active config
+DEFAULT_TIMEFRAME = ACTIVE_CONFIG.get('trading', {}).get('timeframe', '3m')
 
 # Stake Currencies
 STAKE_CURRENCIES = {
@@ -32,8 +48,8 @@ STAKE_CURRENCIES = {
     'ETH': 'ETH'
 }
 
-# Default stake currency
-DEFAULT_STAKE_CURRENCY = 'USDT'
+# Default stake currency from active config
+DEFAULT_STAKE_CURRENCY = ACTIVE_CONFIG.get('trading', {}).get('stake_currency', 'USDT')
 
 # Exchange Types
 EXCHANGE_TYPES = {
@@ -42,8 +58,8 @@ EXCHANGE_TYPES = {
     'MARGIN': 'margin'
 }
 
-# Default exchange type
-DEFAULT_EXCHANGE_TYPE = 'future'
+# Default exchange type from active config
+DEFAULT_EXCHANGE_TYPE = ACTIVE_CONFIG.get('trading', {}).get('exchange_type', 'future')
 
 # Risk Management Constants
 RISK_LEVELS = {
@@ -52,8 +68,8 @@ RISK_LEVELS = {
     'AGGRESSIVE': 0.02      # 2%
 }
 
-# Default risk per trade
-DEFAULT_RISK_PER_TRADE = 0.01  # 1%
+# Default risk per trade from active config
+DEFAULT_RISK_PER_TRADE = ACTIVE_CONFIG.get('risk_management', {}).get('risk_per_trade', 0.01)
 
 # Risk-Reward Ratios
 RISK_REWARD_RATIOS = {
@@ -63,8 +79,8 @@ RISK_REWARD_RATIOS = {
     'VERY_AGGRESSIVE': 5.0
 }
 
-# Default risk-reward ratio
-DEFAULT_RISK_REWARD_RATIO = 2.0
+# Default risk-reward ratio from active config
+DEFAULT_RISK_REWARD_RATIO = ACTIVE_CONFIG.get('risk_management', {}).get('risk_reward_ratio', 2.0)
 
 # Scanner Constants
 SCANNER_BASE_CURRENCIES = {
@@ -75,8 +91,8 @@ SCANNER_BASE_CURRENCIES = {
     'INR': 'INR'
 }
 
-# Default scanner base currency
-DEFAULT_SCANNER_BASE_CURRENCY = 'USDT'
+# Default scanner base currency from active config
+DEFAULT_SCANNER_BASE_CURRENCY = ACTIVE_CONFIG.get('scanner', {}).get('base_currency', 'USDT')
 
 # Scanner market limits
 SCANNER_MARKET_LIMITS = {
@@ -86,8 +102,8 @@ SCANNER_MARKET_LIMITS = {
     'VERY_LARGE': 500
 }
 
-# Default scanner market limit
-DEFAULT_SCANNER_MARKET_LIMIT = 150
+# Default scanner market limit from active config
+DEFAULT_SCANNER_MARKET_LIMIT = ACTIVE_CONFIG.get('scanner', {}).get('market_limit', 150)
 
 # Scanner volatility thresholds
 SCANNER_VOLATILITY_THRESHOLDS = {
@@ -97,8 +113,8 @@ SCANNER_VOLATILITY_THRESHOLDS = {
     'VERY_HIGH': 20.0 # 20%
 }
 
-# Default scanner volatility threshold
-DEFAULT_SCANNER_MIN_24H_CHANGE = 5.0
+# Default scanner volatility threshold from active config
+DEFAULT_SCANNER_MIN_24H_CHANGE = ACTIVE_CONFIG.get('scanner', {}).get('min_24h_change', 5.0)
 
 # Capital Tiers
 CAPITAL_TIERS = {
@@ -108,8 +124,8 @@ CAPITAL_TIERS = {
     'VERY_LARGE': 100000 # $100,000
 }
 
-# Default total capital
-DEFAULT_TOTAL_CAPITAL = 1000
+# Default total capital from active config
+DEFAULT_TOTAL_CAPITAL = ACTIVE_CONFIG.get('trading', {}).get('total_capital', 1000)
 
 # Trading Session Times (in hours, UTC)
 TRADING_SESSIONS = {
@@ -142,3 +158,28 @@ EXCHANGE_NAMES = {
     'KUCOIN': 'kucoin',
     'GATE': 'gate'
 }
+
+# Helper function to get active config
+def get_active_config():
+    """Get the active configuration dictionary"""
+    return ACTIVE_CONFIG
+
+def get_trading_config():
+    """Get trading configuration"""
+    return ACTIVE_CONFIG.get('trading', {})
+
+def get_scanner_config():
+    """Get scanner configuration"""
+    return ACTIVE_CONFIG.get('scanner', {})
+
+def get_risk_config():
+    """Get risk management configuration"""
+    return ACTIVE_CONFIG.get('risk_management', {})
+
+def get_exchanges_config():
+    """Get exchanges configuration"""
+    return ACTIVE_CONFIG.get('exchanges', {})
+
+def get_sessions_config():
+    """Get trading sessions configuration"""
+    return ACTIVE_CONFIG.get('trading_sessions', {})
