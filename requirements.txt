@@ -1,0 +1,8 @@
+ccxt
+pandas
+python-dotenv
+pandas_ta
+numpy
+pytest
+pytest-cov
+pytest-mock

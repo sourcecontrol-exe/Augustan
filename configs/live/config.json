@@ -1,0 +1,106 @@
+{
+  "trading": {
+    "timeframe": "5m",
+    "stake_currency": "USDT",
+    "total_capital": 10000,
+    "exchange_type": "future",
+    "testnet": false
+  },
+  "scanner": {
+    "base_currency": "USDT",
+    "market_limit": 100,
+    "min_24h_change": 5.0,
+    "max_24h_change": 25.0
+  },
+  "risk_management": {
+    "risk_per_trade": 0.01,
+    "risk_reward_ratio": 3.0,
+    "stop_loss_multiplier": 2.0,
+    "max_open_trades": 5,
+    "max_daily_loss": 0.05,
+    "max_portfolio_risk": 0.15
+  },
+  "strategy_parameters": {
+    "rsi_length": 14,
+    "rsi_oversold": 30,
+    "rsi_overbought": 70,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9,
+    "ema_short": 12,
+    "ema_long": 26,
+    "volume_filter": true,
+    "min_volume": 1000000
+  },
+  "exchanges": {
+    "binance": {
+      "enabled": true,
+      "default_type": "future",
+      "testnet": false
+    },
+    "bybit": {
+      "enabled": true,
+      "default_type": "future",
+      "testnet": false
+    },
+    "okx": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": false
+    },
+    "kucoin": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": false
+    },
+    "gate": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": false
+    }
+  },
+  "trading_sessions": {
+    "asia": {
+      "start": 0,
+      "end": 8,
+      "enabled": true
+    },
+    "europe": {
+      "start": 6,
+      "end": 16,
+      "enabled": true
+    },
+    "america": {
+      "start": 13,
+      "end": 23,
+      "enabled": true
+    }
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": false,
+      "bot_token": "",
+      "chat_id": ""
+    },
+    "email": {
+      "enabled": false,
+      "smtp_server": "",
+      "smtp_port": 587,
+      "username": "",
+      "password": "",
+      "to_email": ""
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file_logging": true,
+    "console_logging": true,
+    "log_rotation": true,
+    "max_log_size": "10MB"
+  },
+  "monitoring": {
+    "health_check_interval": 300,
+    "performance_metrics": true,
+    "alert_on_error": true
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "trading": {
+    "timeframe": "3m",
+    "stake_currency": "USDT",
+    "total_capital": 1000,
+    "exchange_type": "future",
+    "testnet": true
+  },
+  "scanner": {
+    "base_currency": "USDT",
+    "market_limit": 150,
+    "min_24h_change": 5.0,
+    "max_24h_change": 20.0
+  },
+  "risk_management": {
+    "risk_per_trade": 0.01,
+    "risk_reward_ratio": 2.0,
+    "stop_loss_multiplier": 2.0,
+    "max_open_trades": 3
+  },
+  "strategy_parameters": {
+    "rsi_length": 14,
+    "rsi_oversold": 30,
+    "rsi_overbought": 70,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9
+  },
+  "exchanges": {
+    "binance": {
+      "enabled": true,
+      "default_type": "future",
+      "testnet": true
+    },
+    "bybit": {
+      "enabled": true,
+      "default_type": "future",
+      "testnet": true
+    },
+    "okx": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": true
+    },
+    "kucoin": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": true
+    },
+    "gate": {
+      "enabled": false,
+      "default_type": "future",
+      "testnet": true
+    }
+  },
+  "trading_sessions": {
+    "asia": {
+      "start": 0,
+      "end": 8,
+      "enabled": true
+    },
+    "europe": {
+      "start": 6,
+      "end": 16,
+      "enabled": true
+    },
+    "america": {
+      "start": 13,
+      "end": 23,
+      "enabled": true
+    }
+  }
+}
