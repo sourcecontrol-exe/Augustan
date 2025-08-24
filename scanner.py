@@ -1,45 +1,92 @@
-# The logic for scanning markets and finding opportunities.# ==============================================================================
+# ==============================================================================
 # File: scanner.py
 # Description: Scans exchanges for potential trading opportunities.
 # ==============================================================================
+import logging
+from typing import Dict, List
 from data_service import DataService
-from config import ACTIVE_CONFIG
+from config import config
+
+logger = logging.getLogger(__name__)
 
 class Scanner:
     def __init__(self, data_service: DataService):
         self.data_service = data_service
-        self.settings = ACTIVE_CONFIG['scanner']
+        self.settings = config.get_scanner_config()
         self.base_currency = self.settings.get('base_currency', 'USDT')
         self.market_limit = self.settings.get('market_limit', 150)
         self.min_24h_change = self.settings.get('min_24h_change', 5.0)
+        self.max_24h_change = self.settings.get('max_24h_change', 20.0)
 
-    def find_opportunities(self):
-        """Scans all connected exchanges and returns a dynamic watchlist."""
-        print("\n--- Starting Market Scan ---")
+    def find_opportunities(self) -> Dict[str, List[str]]:
+        """Scans the exchange and returns a dynamic watchlist."""
+        logger.info("Starting market scan...")
         watchlist = {}
-        for ex_id in self.data_service.exchanges.keys():
-            print(f"Scanning {ex_id}...")
-            try:
-                all_tickers = self.data_service.fetch_tickers(ex_id)
-                if not all_tickers:
+        
+        try:
+            # Get available markets from the data service
+            markets = self.data_service.get_markets()
+            
+            if not markets:
+                logger.warning("No markets available")
+                return watchlist
+            
+            # Filter markets to only include those with the base currency
+            potential_pairs = [
+                symbol for symbol in markets 
+                if symbol.endswith(f"/{self.base_currency}")
+            ]
+            
+            logger.info(f"Found {len(potential_pairs)} {self.base_currency} pairs")
+            
+            # Get ticker data for each pair and filter by volume/volatility
+            opportunities = []
+            
+            for symbol in potential_pairs[:self.market_limit]:  # Limit to avoid rate limits
+                try:
+                    ticker = self.data_service.get_ticker(symbol)
+                    
+                    if not ticker:
+                        continue
+                    
+                    # Check 24h change criteria
+                    change_24h = ticker.get('percentage', 0)
+                    volume_24h = ticker.get('quoteVolume', 0)
+                    
+                    # Filter by volatility and volume
+                    if (abs(change_24h) >= self.min_24h_change and 
+                        abs(change_24h) <= self.max_24h_change and
+                        volume_24h > 0):
+                        
+                        opportunities.append({
+                            'symbol': symbol,
+                            'change_24h': change_24h,
+                            'volume_24h': volume_24h,
+                            'price': ticker.get('last', 0)
+                        })
+                        
+                except Exception as e:
+                    logger.debug(f"Error getting ticker for {symbol}: {e}")
                     continue
-
-                potential_pairs = {
-                    symbol: ticker for symbol, ticker in all_tickers.items()
-                    if symbol.endswith(f"/{self.base_currency}")
-                }
-
-                sorted_pairs = sorted(potential_pairs.items(), key=lambda item: item[1].get('quoteVolume', 0), reverse=True)
-                top_pairs = dict(sorted_pairs[:self.market_limit])
-
-                opportunities = []
-                for symbol, ticker in top_pairs.items():
-                    change_24h = ticker.get('percentage')
-                    if change_24h and abs(change_24h) >= self.min_24h_change:
-                        opportunities.append(symbol)
-                
-                watchlist[ex_id] = opportunities
-                print(f"  - Found {len(opportunities)} potential opportunities on {ex_id}.")
-            except Exception as e:
-                print(f"  - An error occurred while scanning {ex_id}: {e}")
+            
+            # Sort by volume (highest first)
+            opportunities.sort(key=lambda x: x['volume_24h'], reverse=True)
+            
+            # Extract just the symbols for the watchlist
+            opportunity_symbols = [opp['symbol'] for opp in opportunities]
+            
+            # Use exchange name or 'default' as key
+            exchange_name = getattr(self.data_service, 'exchange_name', 'default')
+            watchlist[exchange_name] = opportunity_symbols
+            
+            logger.info(f"Found {len(opportunity_symbols)} opportunities on {exchange_name}")
+            
+            # Log top opportunities
+            for i, opp in enumerate(opportunities[:5]):
+                logger.info(f"  {i+1}. {opp['symbol']}: {opp['change_24h']:.2f}% change, "
+                           f"${opp['volume_24h']:,.0f} volume")
+            
+        except Exception as e:
+            logger.error(f"Error during market scan: {e}")
+        
         return watchlist
