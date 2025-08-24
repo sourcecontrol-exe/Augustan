@@ -4,3 +4,12 @@
 adapters/__pycache__/
 *.pyc
 __pycache__/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/

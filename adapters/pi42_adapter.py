@@ -1,8 +1,3 @@
-# ==============================================================================
-# File: adapters/pi42_adapter.py
-# Description: A custom adapter for the Pi42 exchange, aligned with the
-#              standard BaseAdapter interface.
-# ==============================================================================
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, List
