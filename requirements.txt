@@ -1,8 +1,8 @@
 ccxt
 pandas
 python-dotenv
-pandas_ta
-numpy
+pandas_ta==0.3.14b0
+numpy<2.0.0
 pytest
 pytest-cov
 pytest-mock
