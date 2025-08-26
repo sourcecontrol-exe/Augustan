@@ -16,7 +16,7 @@ from risk_manager import RiskManager
 from scanner import Scanner
 
 # Configure logging
-logging.basicConfig(
+logging.basicConfig(                                                
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
