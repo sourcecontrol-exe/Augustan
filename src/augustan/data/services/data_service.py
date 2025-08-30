@@ -7,7 +7,7 @@ It acts as a data layer abstraction over the adapter system.
 
 import pandas as pd
 from typing import Dict, List, Optional, Any
-from adapters import get_adapter, list_adapters
+from ..adapters import get_adapter, list_adapters
 
 class DataService:
     """

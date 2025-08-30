@@ -98,6 +98,18 @@
     "log_rotation": true,
     "max_log_size": "10MB"
   },
+  "paper_trading": {
+    "initial_capital": 50000,
+    "commission_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "execution_delay_ms": 50,
+    "max_orders_per_minute": 15,
+    "max_position_size_pct": 0.1,
+    "enable_partial_fills": true,
+    "min_order_size": 25.0,
+    "session_duration_minutes": 120,
+    "auto_save_results": true
+  },
   "monitoring": {
     "health_check_interval": 300,
     "performance_metrics": true,

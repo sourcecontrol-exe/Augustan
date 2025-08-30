@@ -78,6 +78,18 @@
     "initial_capital": 1000,
     "commission": 0.001
   },
+  "paper_trading": {
+    "initial_capital": 10000,
+    "commission_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "execution_delay_ms": 100,
+    "max_orders_per_minute": 10,
+    "max_position_size_pct": 0.15,
+    "enable_partial_fills": true,
+    "min_order_size": 10.0,
+    "session_duration_minutes": 60,
+    "auto_save_results": true
+  },
   "logging": {
     "level": "DEBUG",
     "file_logging": true,

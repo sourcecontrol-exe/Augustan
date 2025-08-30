@@ -1,10 +1,43 @@
-# Augustan Trading Bot
+# Augustan - Advanced Algorithmic Trading Bot
 
-A sophisticated Python-based algorithmic trading bot with comprehensive backtesting, multi-exchange support, and professional-grade risk management.
+A comprehensive, modular trading system with backtesting, paper trading, and live trading capabilities.
+
+## 🏗️ Modular Architecture
+
+```
+augustan/
+├── src/
+│   ├── augustan/                    # Main package
+│   │   ├── core/                    # Core business logic
+│   │   │   ├── strategy/            # Trading strategies
+│   │   │   ├── risk_management/     # Risk management
+│   │   │   └── scanner/             # Market scanning
+│   │   ├── data/                    # Data management
+│   │   │   ├── adapters/            # Exchange adapters
+│   │   │   ├── feeds/               # Live data feeds
+│   │   │   └── services/            # Data services
+│   │   ├── trading/                 # Trading execution
+│   │   │   ├── paper/               # Paper trading
+│   │   │   └── live/                # Live trading
+│   │   ├── backtesting/             # Backtesting engine
+│   │   │   ├── engine/              # Core backtesting
+│   │   │   ├── indicators/          # Technical indicators
+│   │   │   └── metrics/             # Performance metrics
+│   │   ├── config/                  # Configuration management
+│   │   └── utils/                   # Utilities and exceptions
+│   └── scripts/                     # Entry point scripts
+├── tests/                           # Test modules
+├── configs/                         # Configuration files
+├── data/                           # Data storage
+├── results/                        # Results and logs
+└── docs/                           # Documentation
+```
 
 ## 🚀 Key Features
 
 - **🔬 Advanced Backtesting Engine**: 25+ technical indicators, strategy optimization, walk-forward analysis
+- **📈 Real-Time Paper Trading**: Virtual trading with live WebSocket feeds and realistic execution
+- **⚡ Live Data Feeds**: WebSocket streams + REST API fallback with automatic failover
 - **📊 Professional Analytics**: Sharpe ratio, drawdown analysis, risk-adjusted returns, trade statistics
 - **🔄 Multi-Exchange Support**: CCXT adapter for 100+ exchanges, custom Pi42 adapter
 - **⚙️ Environment Management**: Separate configs for testing, live trading, and development
@@ -13,49 +46,87 @@ A sophisticated Python-based algorithmic trading bot with comprehensive backtest
 
 ## 📋 Prerequisites
 
-- Python 3.9+
+- Python 3.8+
 - API keys for your chosen exchanges
 - Basic understanding of cryptocurrency trading
 
 ## 🛠️ Quick Start
 
+### Installation
 ```bash
-# 1. Clone and install
-git clone <your-repo-url> && cd Augustan
-pip install -r requirements.txt
+# Install in development mode
+pip install -e .
 
-# 2. Set up environment
-cp .env.example .env  # Add your API keys
-
-# 3. Run backtesting demo
-python backtesting/demo_backtest.py
-
-# 4. Switch environments
-python configs/switch_env.py --switch testing  # or live
+# Or install from source
+python setup.py install
 ```
 
-## 🔬 Backtesting Engine
+### Usage
 
-### **Run Comprehensive Backtesting**
+#### Command Line Interface
+```bash
+# Show available commands
+augustan
+
+# Run paper trading (quick demo)
+augustan paper-trading --quick
+
+# Run paper trading (full session)
+augustan paper-trading --full
+
+# Run backtesting
+augustan backtest
+```
+
+#### Direct Script Execution
+```bash
+# Paper trading demo
+python src/scripts/demo_paper_trading.py --quick
+
+# Backtesting
+python src/scripts/run_backtest.py
+
+# Main trading bot
+python src/scripts/main.py
+```
+
+## 🔬 Backtesting & Paper Trading
+
+### **Backtesting (Historical Data)**
 ```bash
 # Full backtesting suite with optimization
-python backtesting/run_backtest.py
+python src/scripts/run_backtest.py
 
 # Quick demo with realistic results
-python backtesting/demo_backtest.py
+python src/scripts/demo_backtest.py
 ```
 
-### **Key Backtesting Features**
+### **Paper Trading (Real-Time Virtual Trading)**
+```bash
+# Quick paper trading demo
+python src/scripts/demo_paper_trading.py --quick
+
+# Full automated paper trading session
+python src/scripts/demo_paper_trading.py --full
+
+# Live data feed demos
+python src/augustan/data/feeds/live_feed_demo.py --websocket    # Real-time WebSocket
+python src/augustan/data/feeds/live_feed_demo.py --combined     # WebSocket + REST fallback
+```
+
+### **Key Features**
 - **25+ Technical Indicators**: RSI, MACD, Bollinger Bands, Stochastic, ADX, SuperTrend, Ichimoku
 - **Strategy Optimization**: Grid search parameter optimization with walk-forward analysis
 - **Performance Analytics**: Sharpe ratio, Sortino ratio, Calmar ratio, VaR/CVaR, drawdown analysis
 - **Realistic Execution**: Slippage modeling, commission costs, stop-loss/take-profit
+- **Paper Trading**: Real-time virtual trading with live WebSocket feeds
+- **Live Data Feeds**: WebSocket streams + REST API fallback with automatic failover
 - **Strategy Comparison**: Side-by-side performance ranking and analysis
 
 ### **Custom Strategy Example**
 ```python
-from backtesting.strategy_framework import RuleBasedStrategy, StrategyConfig, StrategyRule, StrategyCondition, SignalType
-from backtesting.backtester import BacktestEngine, BacktestConfig
+from augustan.backtesting.engine.strategy_framework import RuleBasedStrategy, StrategyConfig, StrategyRule, StrategyCondition, SignalType
+from augustan.backtesting.engine.backtester import BacktestEngine, BacktestConfig
 
 # Create custom strategy
 strategy_config = StrategyConfig(
@@ -74,26 +145,52 @@ engine = BacktestEngine(BacktestConfig(initial_capital=100000))
 result = engine.run_backtest(RuleBasedStrategy(strategy_config), your_data)
 ```
 
-## 🎯 Live Trading Usage
+## 📈 Paper Trading with Live Feeds
 
-### **Basic Trading Setup**
+### **Real-Time Paper Trading**
 ```python
-from data_service import DataService
-from strategy import Strategy
-from risk_manager import RiskManager
+from augustan.trading.paper.paper_trader import PaperTradingEngine, PaperTradingConfig
+from augustan.data.services.data_service import DataService
+from augustan.core.strategy.strategy import Strategy
+from augustan.core.risk_management.risk_manager import RiskManager
 
 # Initialize components
-ds = DataService('ccxt', {'exchange_id': 'binance', 'testnet': True})
+data_service = DataService('ccxt', {'exchange_id': 'binance', 'testnet': True})
 strategy = Strategy()
-risk_mgr = RiskManager()
+risk_manager = RiskManager()
 
-# Get market data and generate signals
-data = ds.get_ohlcv('BTC/USDT', '1h', 100)
-signal = strategy.generate_signal(data)
+# Configure paper trading
+config = PaperTradingConfig(
+    initial_capital=50000.0,
+    commission_rate=0.001,
+    slippage_rate=0.0005,
+    max_position_size_pct=0.15
+)
 
-if signal == 'BUY':
-    trade_details = risk_mgr.calculate_trade_details(data, signal)
-    print(f"Position size: {trade_details['position_size']}")
+# Create paper trader
+paper_trader = PaperTradingEngine(config, data_service, strategy, risk_manager)
+
+# Run with live WebSocket feeds
+await paper_trader.run_paper_trading(
+    symbols=['BTC/USDT', 'ETH/USDT'], 
+    duration_minutes=60, 
+    use_live_feed=True  # Real-time data
+)
+```
+
+### **Live Data Feed Options**
+```python
+from augustan.data.feeds.live_data_feed import create_simple_feed
+
+# Create live feed
+feed = create_simple_feed(['BTC/USDT', 'ETH/USDT'], data_service)
+
+# Add price callback
+def price_callback(market_data):
+    print(f"{market_data.symbol}: ${market_data.price:.2f}")
+
+feed.add_price_callback(price_callback)
+await feed.start_feed()
 ```
 
 ### **Environment Management**
@@ -114,6 +211,9 @@ python run_tests.py
 
 # Test specific components
 python -m pytest tests/test_risk_manager.py -v
+
+# Test live data feeds
+python paper_trading/live_feed_demo.py --info
 ```
 
 **Test Coverage**: 99% risk management, 75% configuration system
@@ -143,11 +243,35 @@ python -m pytest tests/test_risk_manager.py -v
 - **Config not found**: `python configs/switch_env.py --current`
 - **API issues**: Verify keys and exchange connectivity
 
-## 📊 Available Exchanges
+## 🔄 Trading Progression Path
 
+**1. Backtesting (Historical)**
+```bash
+python backtesting/demo_backtest.py
+```
+
+**2. Paper Trading (Real-time Virtual)**
+```bash
+python paper_trading/demo_paper_trading.py --full
+```
+
+**3. Live Trading (Real Money)**
+```bash
+python configs/switch_env.py --switch live
+python main.py  # Your live trading implementation
+```
+
+## 📊 Available Exchanges & Data Sources
+
+### **Exchanges**
 - **CCXT**: 100+ exchanges (Binance, Bybit, OKX, etc.)
 - **Pi42**: Custom adapter for Pi42 exchange
 - **Extensible**: Easy to add new exchange adapters
+
+### **Live Data Sources**
+- **WebSocket Streams**: Real-time price feeds (sub-second updates)
+- **REST API**: Reliable polling fallback (1-60 second intervals)
+- **Combined Mode**: WebSocket + REST with automatic failover
 
 ## 🚨 Risk Disclaimer
 
