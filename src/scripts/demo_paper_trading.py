@@ -14,11 +14,10 @@ from datetime import datetime
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data_service import DataService
-from strategy import Strategy
-from risk_manager import RiskManager
-from paper_trading import PaperTradingEngine, PaperTradingConfig
-from paper_trading.paper_trader import OrderSide
+from augustan.data.services.data_service import DataService
+from augustan.core.strategy.strategy import Strategy
+from augustan.core.risk_management.risk_manager import RiskManager
+from augustan.trading.paper.paper_trader import PaperTradingEngine, PaperTradingConfig, OrderSide
 
 
 def setup_logging():
