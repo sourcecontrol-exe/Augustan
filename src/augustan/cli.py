@@ -12,10 +12,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from augustan import __version__
-from augustan.core.strategy.strategy import Strategy
-from augustan.core.risk_management.risk_manager import RiskManager
-from augustan.data.services.data_service import DataService
-from augustan.trading.paper.paper_trader import PaperTradingEngine, PaperTradingConfig
 
 
 def run_paper_trading(args):
