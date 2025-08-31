@@ -32,6 +32,22 @@ def setup_logging():
     )
 
 
+def main():
+    """Main entry point for CLI"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Augustan Paper Trading Demo")
+    parser.add_argument('--quick', action='store_true', help='Run quick demo')
+    parser.add_argument('--full', action='store_true', help='Run full demo')
+    
+    args = parser.parse_args()
+    
+    if args.quick:
+        run_quick_demo()
+    else:
+        asyncio.run(run_paper_trading_demo())
+
+
 async def run_paper_trading_demo():
     """Run paper trading demonstration"""
     setup_logging()

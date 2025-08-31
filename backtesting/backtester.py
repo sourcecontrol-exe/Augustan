@@ -1,6 +1,6 @@
 # ==============================================================================
 # File: backtester.py
-# Description: Main backtesting engine for strategy evaluation and optimization
+# Description: Main backtesting engine using backtesting.py library
 # ==============================================================================
 
 import pandas as pd
@@ -12,13 +12,15 @@ from datetime import datetime, timedelta
 import concurrent.futures
 from pathlib import Path
 import json
+import yfinance as yf
+from backtesting import Backtest
+from backtesting.lib import crossover
+import warnings
+warnings.filterwarnings('ignore')
 
-from backtesting.strategy_framework import (
-    BaseStrategy, RuleBasedStrategy, MLStrategy, StrategyConfig, 
-    StrategyFactory, SignalType
-)
-from backtesting.performance_metrics import PerformanceAnalyzer, PerformanceMetrics, StrategyComparison
-from backtesting.indicators import TechnicalIndicators
+# Import our strategy classes
+from strategy import BacktestableStrategy, RSIMACDStrategy, BollingerRSIStrategy, MeanReversionStrategy
+from data_service import DataService
 from risk_manager import RiskManager
 from exceptions import ValidationError, DataFetchError
 
@@ -30,19 +32,10 @@ class BacktestConfig:
     end_date: Optional[str] = None
     initial_capital: float = 100000
     commission: float = 0.001
-    slippage: float = 0.0005
-    risk_free_rate: float = 0.02
-    benchmark_symbol: Optional[str] = None
-    
-    # Risk management
-    max_position_size: float = 0.1  # 10% of portfolio
-    stop_loss_pct: float = 0.02     # 2% stop loss
-    take_profit_pct: float = 0.06   # 6% take profit
-    
-    # Execution settings
-    execution_delay: int = 1        # Bars delay for execution
-    allow_short_selling: bool = True
-    margin_requirement: float = 0.5
+    margin: float = 1.0
+    trade_on_close: bool = False
+    hedging: bool = False
+    exclusive_orders: bool = False
 
 
 @dataclass
@@ -50,111 +43,106 @@ class BacktestResult:
     """Results from a backtest run"""
     strategy_name: str
     config: BacktestConfig
-    performance_metrics: PerformanceMetrics
+    stats: Dict[str, Any]
     equity_curve: pd.Series
-    signals: pd.Series
-    trades: List[Dict[str, Any]]
-    positions: pd.Series
-    drawdown_series: pd.Series
+    trades: pd.DataFrame
     
     # Additional analysis
     monthly_returns: pd.Series
     yearly_returns: pd.Series
-    rolling_sharpe: pd.Series
-    
-    # Execution details
-    execution_log: List[Dict[str, Any]]
-    risk_events: List[Dict[str, Any]]
+    rolling_metrics: Dict[str, pd.Series]
 
 
-class BacktestEngine:
+class AugustanBacktester:
     """
-    Comprehensive backtesting engine for strategy evaluation
+    Augustan backtesting engine using backtesting.py library
     """
     
     def __init__(self, config: BacktestConfig = None):
         self.config = config or BacktestConfig()
-        self.performance_analyzer = PerformanceAnalyzer(
-            risk_free_rate=self.config.risk_free_rate
-        )
-        self.risk_manager = None
         self.logger = logging.getLogger(__name__)
+        self.data_service = None
         
-        # Initialize risk manager if available
+        # Initialize data service if available
         try:
-            self.risk_manager = RiskManager()
-        except ImportError:
-            self.logger.warning("Risk manager not available")
+            self.data_service = DataService('ccxt', {
+                'exchange_id': 'binance',
+                'testnet': True
+            })
         except Exception as e:
-            self.logger.warning(f"Risk manager initialization failed: {e}")
-            self.risk_manager = None
+            self.logger.warning(f"Data service initialization failed: {e}")
     
-    def run_backtest(self, strategy: BaseStrategy, data: pd.DataFrame) -> BacktestResult:
+    def run_backtest(self, strategy_class, data: pd.DataFrame, **strategy_params) -> BacktestResult:
         """
-        Run a complete backtest for a strategy
+        Run a complete backtest for a strategy using backtesting.py library
         
         Args:
-            strategy: Strategy instance to test
-            data: OHLCV market data
+            strategy_class: Strategy class that inherits from BacktestableStrategy
+            data: OHLCV market data with columns [Open, High, Low, Close, Volume]
+            **strategy_params: Parameters to pass to the strategy
             
         Returns:
             BacktestResult with comprehensive analysis
         """
         # Validate inputs
-        self._validate_inputs(strategy, data)
+        self._validate_inputs(data)
         
         # Filter data by date range if specified
         filtered_data = self._filter_data_by_date(data)
         
-        # Generate signals
-        self.logger.info(f"Generating signals for {strategy.config.name}")
-        signals = strategy.generate_signals(filtered_data)
+        # Ensure proper column names (backtesting.py expects capitalized names)
+        filtered_data = self._prepare_data(filtered_data)
         
-        # Execute trades with realistic simulation
-        execution_result = self._execute_trades(filtered_data, signals)
+        self.logger.info(f"Running backtest for {strategy_class.__name__}")
         
-        # Calculate performance metrics
-        performance_metrics = self.performance_analyzer.analyze_performance(
-            filtered_data, signals, self.config.initial_capital, self.config.commission
+        # Create backtest instance
+        bt = Backtest(
+            filtered_data,
+            strategy_class,
+            cash=self.config.initial_capital,
+            commission=self.config.commission,
+            margin=self.config.margin,
+            trade_on_close=self.config.trade_on_close,
+            hedging=self.config.hedging,
+            exclusive_orders=self.config.exclusive_orders
         )
+        
+        # Run backtest with strategy parameters
+        stats = bt.run(**strategy_params)
         
         # Generate additional analysis
-        additional_analysis = self._generate_additional_analysis(
-            filtered_data, execution_result['equity_curve'], execution_result['returns']
-        )
+        additional_analysis = self._generate_additional_analysis(stats)
         
         # Create result object
         result = BacktestResult(
-            strategy_name=strategy.config.name,
+            strategy_name=strategy_class.__name__,
             config=self.config,
-            performance_metrics=performance_metrics,
-            equity_curve=execution_result['equity_curve'],
-            signals=signals,
-            trades=execution_result['trades'],
-            positions=execution_result['positions'],
-            drawdown_series=additional_analysis['drawdown_series'],
+            stats=stats,
+            equity_curve=stats['_equity_curve']['Equity'],
+            trades=stats['_trades'],
             monthly_returns=additional_analysis['monthly_returns'],
             yearly_returns=additional_analysis['yearly_returns'],
-            rolling_sharpe=additional_analysis['rolling_sharpe'],
-            execution_log=execution_result['execution_log'],
-            risk_events=execution_result['risk_events']
+            rolling_metrics=additional_analysis['rolling_metrics']
         )
         
-        self.logger.info(f"Backtest completed for {strategy.config.name}")
+        self.logger.info(f"Backtest completed for {strategy_class.__name__}")
         return result
     
-    def _validate_inputs(self, strategy: BaseStrategy, data: pd.DataFrame):
+    def _validate_inputs(self, data: pd.DataFrame):
         """Validate backtest inputs"""
         if data.empty:
             raise ValidationError("Data cannot be empty")
         
+        # Check for required columns (case insensitive)
         required_columns = ['open', 'high', 'low', 'close', 'volume']
-        missing_columns = [col for col in required_columns if col not in data.columns]
+        data_columns_lower = [col.lower() for col in data.columns]
+        missing_columns = [col for col in required_columns if col not in data_columns_lower]
         if missing_columns:
             raise ValidationError(f"Missing required columns: {missing_columns}")
         
-        if not isinstance(strategy, BaseStrategy):
-            raise ValidationError("Strategy must inherit from BaseStrategy")
+        # Check for sufficient data
+        if len(data) < 50:
+            raise ValidationError("Insufficient data for backtesting (minimum 50 bars required)")
     
     def _filter_data_by_date(self, data: pd.DataFrame) -> pd.DataFrame:
         """Filter data by specified date range"""
@@ -170,15 +158,63 @@ class BacktestEngine:
         
         return filtered_data
     
-    def _execute_trades(self, data: pd.DataFrame, signals: pd.Series) -> Dict[str, Any]:
-        """
-        Execute trades with realistic simulation including slippage, commission, and risk management
-        """
-        # Initialize tracking variables
-        portfolio_value = self.config.initial_capital
-        position = 0  # Current position (-1, 0, 1)
-        position_size = 0  # Actual position size in dollars
-        cash = self.config.initial_capital
+    def _prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Prepare data for backtesting.py library (ensure proper column names)"""
+        prepared_data = data.copy()
+        
+        # Map column names to expected format
+        column_mapping = {
+            'open': 'Open',
+            'high': 'High', 
+            'low': 'Low',
+            'close': 'Close',
+            'volume': 'Volume'
+        }
+        
+        # Rename columns if they exist in lowercase
+        for old_name, new_name in column_mapping.items():
+            if old_name in prepared_data.columns:
+                prepared_data = prepared_data.rename(columns={old_name: new_name})
+        
+        # Ensure we have the required columns
+        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        for col in required_cols:
+            if col not in prepared_data.columns:
+                raise ValidationError(f"Missing required column: {col}")
+        
+        return prepared_data[required_cols]
+    
+    def _generate_additional_analysis(self, stats) -> Dict[str, Any]:
+        """Generate additional analysis from backtest stats"""
+        equity_curve = stats['_equity_curve']['Equity']
+        
+        # Monthly and yearly returns
+        try:
+            returns = equity_curve.pct_change().dropna()
+            monthly_returns = returns.groupby(pd.Grouper(freq='M')).apply(
+                lambda x: (1 + x).prod() - 1
+            )
+            yearly_returns = returns.groupby(pd.Grouper(freq='Y')).apply(
+                lambda x: (1 + x).prod() - 1
+            )
+        except:
+            monthly_returns = pd.Series(dtype=float)
+            yearly_returns = pd.Series(dtype=float)
+        
+        # Rolling metrics
+        rolling_metrics = {}
+        if len(equity_curve) > 252:
+            returns = equity_curve.pct_change().dropna()
+            rolling_metrics['sharpe'] = returns.rolling(252).apply(
+                lambda x: x.mean() / x.std() * np.sqrt(252) if x.std() > 0 else 0
+            )
+            rolling_metrics['volatility'] = returns.rolling(252).std() * np.sqrt(252)
+        
+        return {
+            'monthly_returns': monthly_returns,
+            'yearly_returns': yearly_returns,
+            'rolling_metrics': rolling_metrics
+        }
         
         # Results tracking
         equity_curve = []

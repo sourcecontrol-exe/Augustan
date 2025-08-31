@@ -36,6 +36,12 @@ setup(
     entry_points={
         "console_scripts": [
             "augustan=augustan.cli:main",
+            "augustan-backtest=scripts.run_backtest:main",
+            "augustan-paper=scripts.demo_paper_trading:main",
+            "augustan-live=scripts.main:main",
+            "augustan-test=scripts.run_tests:main",
+            "augustan-demo=scripts.cli_demos:main",
+            "augustan-quick=scripts.augustan_cli:main",
         ],
     },
     include_package_data=True,
