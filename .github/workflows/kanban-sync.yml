@@ -4,11 +4,11 @@ on:
   push:
     paths:
       - 'TODO.md'
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   pull_request:
     paths:
       - 'TODO.md'
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   workflow_dispatch:
 
 jobs:
