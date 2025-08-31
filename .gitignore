@@ -1,9 +1,87 @@
+# Environment variables
 .env
+.env.local
+.env.*.local
 
-# Adapter files
-adapters/__pycache__/
+# Python
 *.pyc
+*.pyo
+*.pyd
 __pycache__/
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Results and outputs
+results/
+*_results/
+multi_strategy_results/
+single_strategy_results/
+backtesting_results/
+paper_trading_results/
+output/
+outputs/
+
+# Data files (except sample data)
+*.csv
+*.json
+!configs/**/*.json
+!**/config*.json
+!package*.json
+!requirements*.json
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
 
 # Test artifacts
 .pytest_cache/
@@ -13,3 +91,18 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+.tox/
+.nox/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+*.cache
