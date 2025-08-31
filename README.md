@@ -1,46 +1,51 @@
 # Augustan - Advanced Algorithmic Trading Bot
 
-A comprehensive, modular trading system with backtesting, paper trading, and live trading capabilities.
+A comprehensive, service-based trading system with backtesting, paper trading, and live trading capabilities using real cryptocurrency market data.
 
-## 🏗️ Modular Architecture
+## 🏗️ Service-Based Architecture
 
 ```
-augustan/
-├── src/
-│   ├── augustan/                    # Main package
-│   │   ├── core/                    # Core business logic
-│   │   │   ├── strategy/            # Trading strategies
-│   │   │   ├── risk_management/     # Risk management
-│   │   │   └── scanner/             # Market scanning
-│   │   ├── data/                    # Data management
-│   │   │   ├── adapters/            # Exchange adapters
-│   │   │   ├── feeds/               # Live data feeds
-│   │   │   └── services/            # Data services
-│   │   ├── trading/                 # Trading execution
-│   │   │   ├── paper/               # Paper trading
-│   │   │   └── live/                # Live trading
-│   │   ├── backtesting/             # Backtesting engine
-│   │   │   ├── engine/              # Core backtesting
-│   │   │   ├── indicators/          # Technical indicators
-│   │   │   └── metrics/             # Performance metrics
-│   │   ├── config/                  # Configuration management
-│   │   └── utils/                   # Utilities and exceptions
-│   └── scripts/                     # Entry point scripts
-├── tests/                           # Test modules
-├── configs/                         # Configuration files
-├── data/                           # Data storage
-├── results/                        # Results and logs
-└── docs/                           # Documentation
+Augustan/
+├── services/                       # Core trading services
+│   ├── data/                      # Data fetching & management
+│   │   ├── data_loader.py         # Multi-source data loading (CCXT, yfinance)
+│   │   └── data_service.py        # Unified data interface
+│   ├── trading/                   # Strategy & execution
+│   │   └── strategy.py            # RSI+MACD, Bollinger+RSI, Mean Reversion
+│   ├── backtesting/               # Backtesting engine
+│   │   ├── backtester.py          # Main backtesting engine
+│   │   ├── indicators.py          # 25+ technical indicators
+│   │   ├── performance_metrics.py # Performance analytics
+│   │   └── strategy_framework.py  # Strategy framework
+│   ├── paper_trading/             # Paper trading simulation
+│   │   ├── paper_trader.py        # Virtual trading engine
+│   │   └── paper_backtest_bridge.py # Integration bridge
+│   ├── risk/                      # Risk management
+│   │   └── risk_manager.py        # ATR-based position sizing
+│   └── adapters/                  # Exchange adapters
+│       ├── base_adapter.py        # Abstract adapter interface
+│       ├── ccxt_adapter.py        # CCXT integration (100+ exchanges)
+│       └── pi42_adapter.py        # Custom Pi42 adapter
+├── core/                          # Shared components
+│   ├── config/                    # Configuration management
+│   ├── exceptions/                # Custom exceptions
+│   └── utils/                     # Shared utilities
+├── cli/                           # Command line interface
+├── scripts/                       # Entry point scripts
+├── tests/                         # Test suite
+├── data/                          # Data storage
+├── results/                       # Backtest results
+└── docs/                          # Documentation
 ```
 
 ## 🚀 Key Features
 
-- **🔬 Advanced Backtesting Engine**: 25+ technical indicators, strategy optimization, walk-forward analysis
-- **📈 Real-Time Paper Trading**: Virtual trading with live WebSocket feeds and realistic execution
-- **⚡ Live Data Feeds**: WebSocket streams + REST API fallback with automatic failover
+- **🔬 Advanced Backtesting Engine**: Real crypto data via CCXT, 25+ technical indicators, strategy optimization
+- **📈 Real-Time Paper Trading**: Virtual trading with live market data and realistic execution
+- **💰 Real Crypto Data**: Direct integration with Binance, OKX, Bybit, KuCoin via CCXT
 - **📊 Professional Analytics**: Sharpe ratio, drawdown analysis, risk-adjusted returns, trade statistics
 - **🔄 Multi-Exchange Support**: CCXT adapter for 100+ exchanges, custom Pi42 adapter
-- **⚙️ Environment Management**: Separate configs for testing, live trading, and development
+- **⚙️ Service-Based Architecture**: Clean separation of concerns, easy to maintain and extend
 - **🛡️ Risk Management**: ATR-based stop-loss, position sizing, portfolio monitoring
 - **🧪 Comprehensive Testing**: 99%+ test coverage with automated validation
 
@@ -68,152 +73,157 @@ python setup.py install
 # Show available commands
 augustan
 
+# Run backtesting with real crypto data
+augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
+
 # Run paper trading (quick demo)
-augustan paper-trading --quick
+augustan-paper --quick
 
 # Run paper trading (full session)
-augustan paper-trading --full
+augustan-paper --full
 
-# Run backtesting
-augustan backtest
+# Run tests
+augustan-test
 ```
 
 #### Direct Script Execution
 ```bash
-# Paper trading demo
-python src/scripts/demo_paper_trading.py --quick
+# Backtesting with real crypto data
+python scripts/run_backtest.py --symbol ETH/USDT --exchange binance --timeframe 4h
 
-# Backtesting
-python src/scripts/run_backtest.py
+# Paper trading demo
+python scripts/demo_paper_trading.py --quick
 
 # Main trading bot
-python src/scripts/main.py
+python scripts/main.py
 ```
 
 ## 🔬 Backtesting & Paper Trading
 
-### **Backtesting (Historical Data)**
+### **Backtesting (Real Crypto Data)**
 ```bash
-# Full backtesting suite with optimization
-python src/scripts/run_backtest.py
+# Backtest BTC with real Binance data
+augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
 
-# Quick demo with realistic results
-python src/scripts/demo_backtest.py
+# Compare all strategies on Ethereum
+augustan-backtest --compare-all --symbol ETH/USDT --exchange okx --timeframe 4h
+
+# Optimize strategy parameters
+augustan-backtest --optimize --strategy rsi_macd --symbol SOL/USDT --limit 500
+
+# Test different crypto pairs
+augustan-backtest --symbol ADA/USDT --exchange bybit --timeframe 1d
 ```
 
 ### **Paper Trading (Real-Time Virtual Trading)**
 ```bash
-# Quick paper trading demo
-python src/scripts/demo_paper_trading.py --quick
+# Quick paper trading demo (1 minute)
+augustan-paper --quick
 
-# Full automated paper trading session
-python src/scripts/demo_paper_trading.py --full
+# Full automated paper trading session (30 minutes)
+augustan-paper --full
 
-# Live data feed demos
-python src/augustan/data/feeds/live_feed_demo.py --websocket    # Real-time WebSocket
-python src/augustan/data/feeds/live_feed_demo.py --combined     # WebSocket + REST fallback
+# Custom duration and symbol
+python scripts/demo_paper_trading.py --symbol ETH/USDT --duration 10
 ```
 
 ### **Key Features**
+- **Real Crypto Data**: Direct CCXT integration with Binance, OKX, Bybit, KuCoin
 - **25+ Technical Indicators**: RSI, MACD, Bollinger Bands, Stochastic, ADX, SuperTrend, Ichimoku
 - **Strategy Optimization**: Grid search parameter optimization with walk-forward analysis
 - **Performance Analytics**: Sharpe ratio, Sortino ratio, Calmar ratio, VaR/CVaR, drawdown analysis
 - **Realistic Execution**: Slippage modeling, commission costs, stop-loss/take-profit
-- **Paper Trading**: Real-time virtual trading with live WebSocket feeds
-- **Live Data Feeds**: WebSocket streams + REST API fallback with automatic failover
+- **Paper Trading**: Real-time virtual trading with live market data
 - **Strategy Comparison**: Side-by-side performance ranking and analysis
 
 ### **Custom Strategy Example**
 ```python
-from augustan.backtesting.engine.strategy_framework import RuleBasedStrategy, StrategyConfig, StrategyRule, StrategyCondition, SignalType
-from augustan.backtesting.engine.backtester import BacktestEngine, BacktestConfig
+from services.trading import RSIMACDStrategy, BollingerRSIStrategy, MeanReversionStrategy
+from services.backtesting import AugustanBacktester, BacktestConfig
+from services.data import DataLoader
 
-# Create custom strategy
-strategy_config = StrategyConfig(
-    name="My_Strategy",
-    indicators=[{"name": "rsi", "params": {"length": 14}}],
-    entry_rules=[
-        StrategyRule(
-            conditions=[StrategyCondition("rsi", "RSI_14", "<", 30)],
-            signal=SignalType.BUY
-        )
-    ]
+# Load real crypto data
+loader = DataLoader()
+data = loader.load_data('BTC/USDT', source='binance', timeframe='1h', limit=1000)
+
+# Configure backtesting
+config = BacktestConfig(
+    initial_capital=10000,
+    commission=0.001,
+    margin=1.0
 )
 
-# Run backtest
-engine = BacktestEngine(BacktestConfig(initial_capital=100000))
-result = engine.run_backtest(RuleBasedStrategy(strategy_config), your_data)
+# Run backtest with real data
+backtester = AugustanBacktester(config)
+results = backtester.run_backtest(data, RSIMACDStrategy)
 ```
 
-## 📈 Paper Trading with Live Feeds
+## 📈 Real Crypto Data Integration
 
-### **Real-Time Paper Trading**
+### **Supported Exchanges & Timeframes**
 ```python
-from augustan.trading.paper.paper_trader import PaperTradingEngine, PaperTradingConfig
-from augustan.data.services.data_service import DataService
-from augustan.core.strategy.strategy import Strategy
-from augustan.core.risk_management.risk_manager import RiskManager
+from services.data import DataLoader, get_crypto_pairs
+
+# Initialize data loader
+loader = DataLoader()
+
+# Supported exchanges
+exchanges = ['binance', 'okx', 'bybit', 'kucoin']
+
+# Supported timeframes
+timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
+
+# Popular crypto pairs
+pairs = get_crypto_pairs()
+# ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'SOL/USDT', ...]
+
+# Load real market data
+btc_data = loader.load_data('BTC/USDT', source='binance', timeframe='1h', limit=1000)
+eth_data = loader.load_data('ETH/USDT', source='okx', timeframe='4h', limit=500)
+```
+
+### **Paper Trading with Real Data**
+```python
+from services.paper_trading import PaperTradingEngine
+from services.trading import RSIMACDStrategy
+from services.data import DataLoader
+from core.config import ConfigManager
 
 # Initialize components
-data_service = DataService('ccxt', {'exchange_id': 'binance', 'testnet': True})
-strategy = Strategy()
-risk_manager = RiskManager()
+config_manager = ConfigManager()
+config = config_manager.get_active_config()
+paper_trader = PaperTradingEngine(config)
+strategy = RSIMACDStrategy()
 
-# Configure paper trading
-config = PaperTradingConfig(
-    initial_capital=50000.0,
-    commission_rate=0.001,
-    slippage_rate=0.0005,
-    max_position_size_pct=0.15
+# Run paper trading with real market data
+await paper_trader.start_session(
+    strategy=strategy,
+    symbol='BTC/USDT',
+    duration_minutes=30
 )
-
-# Create paper trader
-paper_trader = PaperTradingEngine(config, data_service, strategy, risk_manager)
-
-# Run with live WebSocket feeds
-await paper_trader.run_paper_trading(
-    symbols=['BTC/USDT', 'ETH/USDT'], 
-    duration_minutes=60, 
-    use_live_feed=True  # Real-time data
-)
-```
-
-### **Live Data Feed Options**
-```python
-from augustan.data.feeds.live_data_feed import create_simple_feed
-
-# Create live feed
-feed = create_simple_feed(['BTC/USDT', 'ETH/USDT'], data_service)
-
-# Add price callback
-def price_callback(market_data):
-    print(f"{market_data.symbol}: ${market_data.price:.2f}")
-
-feed.add_price_callback(price_callback)
-await feed.start_feed()
 ```
 
 ### **Environment Management**
 ```bash
 # Switch between environments
-python configs/switch_env.py --switch testing  # Safe testing
-python configs/switch_env.py --switch live     # Real trading
+python core/config/switch_env.py --switch testing  # Safe testing
+python core/config/switch_env.py --switch live     # Real trading
 
 # Check current environment
-python configs/switch_env.py --current
+python core/config/switch_env.py --current
 ```
 
 ## 🧪 Testing & Validation
 
 ```bash
 # Run comprehensive tests
-python run_tests.py
+augustan-test
 
 # Test specific components
 python -m pytest tests/test_risk_manager.py -v
 
-# Test live data feeds
-python paper_trading/live_feed_demo.py --info
+# Test backtesting with real data
+augustan-backtest --symbol BTC/USDT --exchange binance --limit 100
 ```
 
 **Test Coverage**: 99% risk management, 75% configuration system
@@ -245,20 +255,20 @@ python paper_trading/live_feed_demo.py --info
 
 ## 🔄 Trading Progression Path
 
-**1. Backtesting (Historical)**
+**1. Backtesting (Real Crypto Data)**
 ```bash
-python backtesting/demo_backtest.py
+augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
 ```
 
 **2. Paper Trading (Real-time Virtual)**
 ```bash
-python paper_trading/demo_paper_trading.py --full
+augustan-paper --full
 ```
 
 **3. Live Trading (Real Money)**
 ```bash
-python configs/switch_env.py --switch live
-python main.py  # Your live trading implementation
+python core/config/switch_env.py --switch live
+python scripts/main.py  # Your live trading implementation
 ```
 
 ## 📊 Available Exchanges & Data Sources
@@ -268,10 +278,10 @@ python main.py  # Your live trading implementation
 - **Pi42**: Custom adapter for Pi42 exchange
 - **Extensible**: Easy to add new exchange adapters
 
-### **Live Data Sources**
-- **WebSocket Streams**: Real-time price feeds (sub-second updates)
-- **REST API**: Reliable polling fallback (1-60 second intervals)
-- **Combined Mode**: WebSocket + REST with automatic failover
+### **Crypto Data Sources**
+- **CCXT Integration**: Real-time data from Binance, OKX, Bybit, KuCoin
+- **Multiple Timeframes**: 1m, 5m, 15m, 1h, 4h, 1d intervals
+- **Automatic Fallback**: CCXT → yfinance → synthetic data (if needed)
 
 ## 🚨 Risk Disclaimer
 
