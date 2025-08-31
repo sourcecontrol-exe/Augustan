@@ -4,11 +4,27 @@ Setup script for Augustan Trading Bot
 
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+try:
+    with open("README.md", "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+except (IOError, TypeError):
+    # Fallback for Python 2.7 or missing README
+    try:
+        with open("README.md", "r") as fh:
+            long_description = fh.read()
+    except IOError:
+        long_description = "Augustan Trading Bot"
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+try:
+    with open("requirements.txt", "r", encoding="utf-8") as fh:
+        requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+except (IOError, TypeError):
+    # Fallback for Python 2.7 or missing requirements.txt
+    try:
+        with open("requirements.txt", "r") as fh:
+            requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+    except IOError:
+        requirements = ["pandas", "numpy", "ccxt", "backtesting", "pandas-ta"]
 
 setup(
     name="augustan",
@@ -17,8 +33,7 @@ setup(
     description="Advanced Algorithmic Trading Bot with Backtesting and Paper Trading",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Financial and Insurance Industry",
@@ -35,7 +50,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "augustan=augustan.cli:main",
+            "augustan=cli.cli:main",
             "augustan-backtest=scripts.run_backtest:main",
             "augustan-paper=scripts.demo_paper_trading:main",
             "augustan-live=scripts.main:main",
