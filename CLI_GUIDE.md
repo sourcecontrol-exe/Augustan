@@ -1,518 +1,344 @@
-# Futures Trading CLI Guide
+# 🚀 Augustan Trading System CLI Guide
 
-A comprehensive command-line interface for the futures trading system that makes it easy to analyze markets, generate signals, and manage trading operations.
+The Augustan Trading System provides a powerful command-line interface (`aug`) for futures trading analysis, position sizing, and risk management.
 
-## 🚀 Quick Start
+## 📦 Installation
 
-### Installation
 ```bash
-# Install dependencies
-pip3 install -r requirements.txt
+# Install the package
+pip install -e .
 
-# Make CLI executable
-chmod +x futures-cli
-
-# Initialize configuration
-python3 cli.py config init
-
-# Run your first analysis
-python3 cli.py volume analyze
+# The 'aug' command will be available globally
 ```
 
-### Basic Usage
+## 🎯 Quick Start
+
 ```bash
-# Show help
-python3 cli.py --help
+# Show all available commands
+aug --help
 
-# Analyze volume across all exchanges
-python3 cli.py volume analyze
+# Analyze volume across exchanges
+aug volume analyze --enhanced
 
-# Generate trading signals
-python3 cli.py trading analyze --timeframe 4h
+# Check position sizing for a symbol
+aug position analyze --symbol BTC/USDT --budget 100
 
-# Show top markets
-python3 cli.py volume top --limit 10
+# Monitor real-time prices
+aug live monitor --symbols BTC/USDT ETH/USDT --duration 30
 
-# View latest signals
-python3 cli.py trading signals --type buy
+# Show configuration
+aug config show --section risk
 ```
 
-## 📋 Command Reference
+## 🔧 Auto-Completion Setup
 
-### Global Options
+Enable tab completion for faster command entry:
+
 ```bash
--c, --config TEXT    Path to configuration file (default: config/exchanges_config.json)
--v, --verbose        Enable verbose output for debugging
---version           Show version and exit
+# Enable completion for current session
+source completion.sh
+
+# Enable permanently (add to ~/.bashrc or ~/.zshrc)
+echo "source $(pwd)/completion.sh" >> ~/.bashrc
 ```
 
-### Volume Commands (`volume`)
+### Auto-Completion Features
 
-#### `volume analyze`
-Analyze futures market volumes across all configured exchanges.
+- **Commands**: `aug <TAB>` shows main commands
+- **Subcommands**: `aug volume <TAB>` shows volume subcommands
+- **Symbols**: `aug position analyze --symbol <TAB>` shows trading symbols
+- **Timeframes**: `aug trading analyze --timeframe <TAB>` shows timeframes
+- **Exchanges**: `aug volume analyze --exchanges <TAB>` shows exchanges
+- **Formats**: `aug volume analyze --format <TAB>` shows output formats
 
-**Usage:**
+## 📊 Volume Analysis Commands
+
+### `aug volume analyze`
+Analyze futures market volumes across exchanges.
+
 ```bash
-python3 cli.py volume analyze [OPTIONS]
-```
+# Basic volume analysis
+aug volume analyze
 
-**Options:**
-- `--exchanges, -e`: Specific exchanges to analyze (binance, bybit, okx, bitget, gate)
-- `--min-volume, -m`: Minimum 24h volume in USD (default: 1M)
-- `--max-rank, -r`: Maximum volume rank to consider (default: 200)
-- `--output, -o`: Output file path (auto-generated if not specified)
-- `--format, -f`: Output format (json, csv, table)
-- `--save/--no-save`: Save results to file (default: true)
+# Enhanced analysis with position sizing
+aug volume analyze --enhanced --budget 100 --risk-percent 0.5
 
-**Examples:**
-```bash
-# Analyze all exchanges with default settings
-python3 cli.py volume analyze
+# Specific exchanges only
+aug volume analyze --exchanges bybit binance
 
-# Analyze only Bybit with higher volume threshold
-python3 cli.py volume analyze --exchanges bybit --min-volume 5000000
+# Custom volume threshold
+aug volume analyze --min-volume 5000000
 
-# Save as JSON file
-python3 cli.py volume analyze --format json --output my_analysis.json
-
-# Analyze without saving
-python3 cli.py volume analyze --no-save
-```
-
-#### `volume top`
-Show top markets by volume from the latest analysis.
-
-**Usage:**
-```bash
-python3 cli.py volume top [OPTIONS]
+# Output to JSON
+aug volume analyze --format json --output analysis.json
 ```
 
 **Options:**
-- `--limit, -l`: Number of top markets to show (default: 10)
-- `--exchange, -e`: Filter by specific exchange
+- `--enhanced`: Run enhanced analysis with position sizing
+- `--budget FLOAT`: Trading budget in USDT (default: 50)
+- `--risk-percent FLOAT`: Risk per trade in % (default: 0.2)
+- `--exchanges`: Specific exchanges to analyze
+- `--min-volume FLOAT`: Minimum 24h volume in USD
+- `--format`: Output format (json, csv, table)
 
-**Examples:**
+### `aug volume top`
+Show top markets by volume from latest analysis.
+
 ```bash
-# Show top 20 markets
-python3 cli.py volume top --limit 20
+# Show top 10 markets
+aug volume top --limit 10
 
-# Show top 5 markets from Bybit only
-python3 cli.py volume top --exchange bybit --limit 5
+# Show top markets with custom minimum volume
+aug volume top --min-volume 10000000
 ```
 
-### Trading Commands (`trading`)
+## 💰 Position Sizing Commands
 
-#### `trading analyze`
-Generate trading signals for futures markets using RSI and MACD strategies.
+### `aug position analyze`
+Analyze position sizing for a specific symbol.
 
-**Usage:**
 ```bash
-python3 cli.py trading analyze [OPTIONS]
+# Basic analysis
+aug position analyze --symbol BTC/USDT --budget 100
+
+# Custom risk parameters
+aug position analyze --symbol ETH/USDT --budget 500 --risk-percent 0.5 --leverage 10
+
+# Custom stop loss
+aug position analyze --symbol DOGE/USDT --budget 50 --stop-loss-percent 3.0
 ```
 
 **Options:**
-- `--symbols, -s`: Specific symbols to analyze (can be multiple)
-- `--timeframe, -t`: Timeframe for analysis (1m, 5m, 1h, 4h, 1d)
-- `--limit, -l`: Number of candles to fetch (default: 100)
-- `--top`: Number of top volume symbols to analyze (default: 20)
+- `--symbol TEXT`: Symbol to analyze (required)
+- `--budget FLOAT`: Trading budget in USDT (default: 50)
+- `--risk-percent FLOAT`: Risk per trade in % (default: 0.2)
+- `--leverage INTEGER`: Leverage to use (default: 5)
+- `--stop-loss-percent FLOAT`: Stop loss in % (default: 2.0)
+
+### `aug position tradeable`
+Find tradeable symbols based on position sizing analysis.
+
+```bash
+# Find tradeable symbols for $100 budget
+aug position tradeable --budget 100 --limit 20
+
+# Custom risk parameters
+aug position tradeable --budget 500 --risk-percent 0.5
+```
+
+## 📈 Trading Analysis Commands
+
+### `aug trading analyze`
+Generate trading signals for futures markets.
+
+```bash
+# Analyze top volume symbols
+aug trading analyze --timeframe 4h --top 20
+
+# Specific symbols
+aug trading analyze --symbols BTC/USDT ETH/USDT --strategies rsi
+
+# High confidence signals only
+aug trading analyze --min-confidence 0.7 --format json
+
+# Use only tradeable symbols
+aug trading analyze --use-tradeable --budget 100
+```
+
+**Options:**
+- `--symbols`: Specific symbols to analyze
+- `--timeframe`: Timeframe for analysis (1m, 5m, 1h, 4h, 1d)
 - `--strategies`: Strategies to run (rsi, macd, all)
-- `--min-confidence`: Minimum confidence threshold for signals (0.0-1.0)
-- `--output, -o`: Output file path
-- `--format, -f`: Output format (json, table)
+- `--min-confidence FLOAT`: Minimum confidence threshold
+- `--top INTEGER`: Number of top volume symbols to analyze
+- `--use-tradeable`: Use only tradeable symbols from enhanced analysis
 
-**Examples:**
-```bash
-# Analyze top 20 markets with 4h timeframe
-python3 cli.py trading analyze --timeframe 4h
-
-# Analyze specific symbols
-python3 cli.py trading analyze --symbols BTCUSDT ETHUSDT --timeframe 1h
-
-# Run only RSI strategy with high confidence threshold
-python3 cli.py trading analyze --strategies rsi --min-confidence 0.7
-
-# Save results as JSON
-python3 cli.py trading analyze --format json --output signals.json
-```
-
-#### `trading signals`
+### `aug trading signals`
 Show latest trading signals with filtering options.
 
-**Usage:**
-```bash
-python3 cli.py trading signals [OPTIONS]
-```
-
-**Options:**
-- `--type, -t`: Filter signals by type (buy, sell, all)
-- `--strategy, -s`: Filter signals by strategy (rsi, macd, all)
-- `--min-confidence`: Minimum confidence threshold
-- `--limit, -l`: Number of signals to show (default: 10)
-
-**Examples:**
 ```bash
 # Show all signals
-python3 cli.py trading signals
+aug trading signals --type all --strategy all
 
-# Show only BUY signals with high confidence
-python3 cli.py trading signals --type buy --min-confidence 0.7
+# Buy signals only
+aug trading signals --type buy --min-confidence 0.6
 
-# Show top 5 RSI signals
-python3 cli.py trading signals --strategy rsi --limit 5
+# RSI strategy signals
+aug trading signals --strategy rsi --limit 5
 ```
 
-### Job Commands (`job`)
+## 🚀 Live Trading Commands
 
-#### `job start`
-Start the daily volume analysis job.
+### `aug live monitor`
+Monitor real-time prices for symbols.
 
-**Usage:**
 ```bash
-python3 cli.py job start [OPTIONS]
+# Monitor multiple symbols
+aug live monitor --symbols BTC/USDT ETH/USDT --duration 60
+
+# Quick price check
+aug live monitor --symbols DOGE/USDT --duration 10
 ```
 
-**Options:**
-- `--schedule/--no-schedule`: Run as scheduled job vs. run once (default: false)
-- `--time, -t`: Schedule time in HH:MM format (default: 09:00)
-- `--daemon/--no-daemon`: Run in background (default: false)
+### `aug live test`
+Test live trading components.
 
-**Examples:**
 ```bash
-# Run volume analysis once
-python3 cli.py job start
-
-# Schedule daily job at 9:00 AM
-python3 cli.py job start --schedule
-
-# Schedule daily job at 3:30 PM
-python3 cli.py job start --schedule --time 15:30
+# Test all components
+aug live test
 ```
 
-#### `job status`
+### `aug live start`
+Start live trading engine (paper trading).
+
+```bash
+# Start with specific symbols
+aug live start --symbols BTC/USDT ETH/USDT --balance 1000 --duration 60
+
+# Paper trading mode
+aug live start --symbols DOGE/USDT --paper
+```
+
+## 🤖 Job Management Commands
+
+### `aug job status`
 Show job status and latest results.
 
-**Usage:**
 ```bash
-python3 cli.py job status
+# Check job status
+aug job status
 ```
 
-**Output includes:**
-- Last run date
-- Markets analyzed
-- Recommended markets count
-- Total volume
-- Top 5 recommended symbols
+### `aug job start`
+Start the daily volume analysis job.
 
-### Configuration Commands (`config`)
+```bash
+# Start scheduled job
+aug job start --schedule
+```
 
-#### `config show`
+## ⚙️ Configuration Commands
+
+### `aug config show`
 Show current configuration.
 
-**Usage:**
 ```bash
-python3 cli.py config show [OPTIONS]
+# Show complete configuration
+aug config show
+
+# Show specific section
+aug config show --section risk
+aug config show --section data
+aug config show --section signals
 ```
 
-**Options:**
-- `--section, -s`: Show specific section only
-
-**Examples:**
-```bash
-# Show all configuration
-python3 cli.py config show
-
-# Show only volume settings
-python3 cli.py config show --section volume_settings
-```
-
-#### `config init`
+### `aug config init`
 Initialize configuration file with defaults.
 
-**Usage:**
 ```bash
-python3 cli.py config init [OPTIONS]
+# Initialize with defaults
+aug config init
+
+# Force overwrite existing config
+aug config init --force
 ```
 
-**Options:**
-- `--force, -f`: Overwrite existing configuration
+## 📊 Dashboard
 
-**Examples:**
-```bash
-# Create default configuration
-python3 cli.py config init
-
-# Overwrite existing configuration
-python3 cli.py config init --force
-```
-
-### Dashboard Command
-
-#### `dashboard`
+### `aug dashboard`
 Show a live dashboard with market overview.
 
-**Usage:**
 ```bash
-python3 cli.py dashboard [OPTIONS]
+# Show dashboard with auto-refresh
+aug dashboard --refresh 5
+
+# One-time dashboard
+aug dashboard --refresh 0
 ```
 
-**Options:**
-- `--refresh, -r`: Auto-refresh interval in seconds (0 = no refresh)
+## 🔍 Common Use Cases
 
-**Examples:**
+### 1. Market Analysis Workflow
 ```bash
-# Static dashboard
-python3 cli.py dashboard
+# 1. Analyze market volumes
+aug volume analyze --enhanced --budget 100
 
-# Auto-refresh every 30 seconds
-python3 cli.py dashboard --refresh 30
+# 2. Find tradeable symbols
+aug position tradeable --budget 100 --limit 10
+
+# 3. Generate trading signals
+aug trading analyze --use-tradeable --timeframe 4h
+
+# 4. Monitor live prices
+aug live monitor --symbols BTC/USDT ETH/USDT --duration 30
 ```
 
-## 🎯 Common Workflows
-
-### Daily Market Analysis
+### 2. Position Sizing Analysis
 ```bash
-# 1. Run volume analysis
-python3 cli.py volume analyze
-
-# 2. Check top markets
-python3 cli.py volume top --limit 10
-
-# 3. Generate trading signals for top markets
-python3 cli.py trading analyze --timeframe 4h
-
-# 4. View high-confidence BUY signals
-python3 cli.py trading signals --type buy --min-confidence 0.7
+# Analyze multiple symbols
+for symbol in BTC/USDT ETH/USDT SOL/USDT; do
+    aug position analyze --symbol $symbol --budget 100 --risk-percent 0.5
+done
 ```
 
-### Quick Signal Check
+### 3. Risk Management Check
 ```bash
-# Show latest signals
-python3 cli.py trading signals --limit 5
+# Check current risk settings
+aug config show --section risk
 
-# Show only BUY signals
-python3 cli.py trading signals --type buy
-
-# Show high-confidence signals
-python3 cli.py trading signals --min-confidence 0.75
+# Analyze position with conservative parameters
+aug position analyze --symbol BTC/USDT --budget 50 --risk-percent 0.2 --leverage 3
 ```
 
-### Automated Daily Job
+## 🎯 Tips and Tricks
+
+1. **Use Auto-Completion**: Press TAB to get suggestions for commands and options
+2. **Check Help**: Use `--help` on any command to see available options
+3. **Verbose Mode**: Use `-v` flag for detailed logging
+4. **Custom Config**: Use `-c` to specify a custom configuration file
+5. **Output Formats**: Use `--format json` for machine-readable output
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **Command not found**: Ensure the package is installed with `pip install -e .`
+2. **Auto-completion not working**: Source the completion script with `source completion.sh`
+3. **Configuration errors**: Use `aug config init` to create a default configuration
+4. **Network issues**: Check your internet connection for data fetching commands
+
+### Getting Help
+
 ```bash
-# Start daily scheduled job
-python3 cli.py job start --schedule
+# General help
+aug --help
 
-# Check job status
-python3 cli.py job status
+# Command-specific help
+aug volume --help
+aug position analyze --help
 
-# View latest volume analysis results
-python3 cli.py volume top --limit 20
+# Verbose output for debugging
+aug -v volume analyze
 ```
 
-### Custom Analysis
+## 📝 Examples
+
+### Complete Trading Session
 ```bash
-# Analyze specific symbols with 1h timeframe
-python3 cli.py trading analyze --symbols BTCUSDT ETHUSDT SOLUSDT --timeframe 1h
+# 1. Market analysis
+aug volume analyze --enhanced --budget 1000 --risk-percent 0.5
 
-# Run only MACD strategy
-python3 cli.py trading analyze --strategies macd --timeframe 4h
+# 2. Find opportunities
+aug position tradeable --budget 1000 --limit 20
 
-# High-confidence analysis with JSON output
-python3 cli.py trading analyze --min-confidence 0.8 --format json --output high_conf_signals.json
+# 3. Generate signals
+aug trading analyze --use-tradeable --timeframe 1h --min-confidence 0.7
+
+# 4. Monitor live
+aug live monitor --symbols BTC/USDT ETH/USDT SOL/USDT --duration 300
+
+# 5. Check portfolio
+aug dashboard --refresh 10
 ```
 
-## 🔧 Configuration
-
-### Exchange Configuration
-Edit `config/exchanges_config.json` to add your API keys:
-
-```json
-{
-  "binance": {
-    "api_key": "your_binance_api_key",
-    "secret": "your_binance_secret",
-    "enabled": true,
-    "testnet": false
-  },
-  "bybit": {
-    "api_key": "your_bybit_api_key",
-    "secret": "your_bybit_secret",
-    "enabled": true,
-    "testnet": false
-  }
-}
-```
-
-### Volume Settings
-```json
-{
-  "volume_settings": {
-    "min_volume_usd_24h": 1000000,
-    "min_volume_rank": 200,
-    "max_markets_per_exchange": 100
-  }
-}
-```
-
-### Job Settings
-```json
-{
-  "job_settings": {
-    "schedule_time": "09:00",
-    "retention_days": 30,
-    "output_directory": "volume_data"
-  }
-}
-```
-
-## 📊 Output Formats
-
-### Table Format (Default)
-```
-🏆 Top 5 Markets by Volume
-================================================================================
- 1. ETH/USDT:USDT        | BYBIT    | $7,507,053,058 | Score:  80.5
- 2. BTC/USDT:USDT        | BYBIT    | $7,497,283,725 | Score:  80.0
- 3. SOL/USDT:USDT        | BYBIT    | $2,372,808,996 | Score:  80.6
-```
-
-### JSON Format
-```json
-{
-  "timestamp": "2025-09-01T22:11:36.364033",
-  "timeframe": "4h",
-  "symbols_analyzed": 19,
-  "signals": {
-    "BTC/USDT:USDT": [
-      {
-        "strategy": "RSI",
-        "signal_type": "BUY",
-        "confidence": 0.632,
-        "price": 112152.8
-      }
-    ]
-  }
-}
-```
-
-## 🚨 Error Handling
-
-### Common Errors and Solutions
-
-**Configuration not found:**
-```bash
-❌ Configuration file not found: config/exchanges_config.json
-```
-**Solution:** Run `python3 cli.py config init`
-
-**No volume analysis data:**
-```bash
-❌ No volume analysis data found. Run 'volume analyze' first.
-```
-**Solution:** Run `python3 cli.py volume analyze`
-
-**API rate limits:**
-```bash
-❌ Error: Exchange rate limit exceeded
-```
-**Solution:** Wait a few minutes and try again, or reduce the number of symbols
-
-**Network connectivity:**
-```bash
-❌ Error: Connection timeout
-```
-**Solution:** Check internet connection and try again
-
-## 🔍 Debugging
-
-### Verbose Mode
-Use the `--verbose` flag for detailed debugging information:
-```bash
-python3 cli.py --verbose volume analyze
-```
-
-### Log Files
-Check log files for detailed execution information:
-```bash
-tail -f logs/futures_trading_system.log
-```
-
-## 📈 Performance Tips
-
-1. **Use specific exchanges** for faster analysis:
-   ```bash
-   python3 cli.py volume analyze --exchanges bybit
-   ```
-
-2. **Limit symbols** for quick testing:
-   ```bash
-   python3 cli.py trading analyze --symbols BTCUSDT ETHUSDT
-   ```
-
-3. **Use higher timeframes** for faster execution:
-   ```bash
-   python3 cli.py trading analyze --timeframe 4h
-   ```
-
-4. **Set confidence thresholds** to filter noise:
-   ```bash
-   python3 cli.py trading signals --min-confidence 0.7
-   ```
-
-## 🔒 Security Best Practices
-
-1. **API Keys**: Store API keys in the configuration file, not in command line
-2. **File Permissions**: Restrict access to configuration files:
-   ```bash
-   chmod 600 config/exchanges_config.json
-   ```
-3. **Testnet**: Use testnet APIs for testing:
-   ```json
-   {"testnet": true}
-   ```
-
-## 🤝 Integration Examples
-
-### Shell Scripts
-```bash
-#!/bin/bash
-# Daily analysis script
-echo "Running daily futures analysis..."
-python3 cli.py volume analyze --no-save
-python3 cli.py trading analyze --timeframe 4h --output daily_signals.json
-echo "Analysis complete!"
-```
-
-### Cron Jobs
-```bash
-# Run volume analysis daily at 9 AM
-0 9 * * * cd /path/to/augustan && python3 cli.py volume analyze
-
-# Generate trading signals every 4 hours
-0 */4 * * * cd /path/to/augustan && python3 cli.py trading analyze --timeframe 4h
-```
-
-### Python Integration
-```python
-import subprocess
-import json
-
-# Run CLI command from Python
-result = subprocess.run([
-    'python3', 'cli.py', 'volume', 'analyze', '--format', 'json'
-], capture_output=True, text=True)
-
-data = json.loads(result.stdout)
-print(f"Found {data['recommended_markets']} recommended markets")
-```
-
----
-
-## 📞 Support
-
-For help with the CLI:
-- Use `--help` with any command for detailed information
-- Check the log files in `logs/` directory
-- Use `--verbose` mode for debugging
-- Refer to the main README for system architecture details
-
-**Happy Trading!** 🚀
+This CLI provides a comprehensive toolkit for futures trading analysis, from market research to live monitoring, all accessible through the simple `aug` command with powerful auto-completion support.

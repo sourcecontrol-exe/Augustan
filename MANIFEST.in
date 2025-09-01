@@ -1,0 +1,17 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include setup.py
+include install.sh
+include aug
+include test_position_sizing.py
+
+recursive-include config *.json
+recursive-include trading_system *.py
+recursive-include logs *.log
+recursive-include volume_data *.json
+
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.egg-info
