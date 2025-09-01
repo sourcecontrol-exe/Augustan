@@ -13,6 +13,7 @@ from loguru import logger
 from ..core.config_manager import get_config_manager
 from ..core.position_state import EnhancedSignal, PositionState
 from ..core.position_sizing import ExchangeLimits
+from ..core.futures_models import ExchangeType
 from ..data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
 
 
@@ -153,7 +154,7 @@ class RiskManager:
         
         # Get exchange limits if not provided
         if exchange_limits is None:
-            exchange_limits = self.limits_fetcher.fetch_symbol_limits('binance', signal.symbol)
+            exchange_limits = self.limits_fetcher.fetch_symbol_limits(ExchangeType.BINANCE, signal.symbol)
             if exchange_limits is None:
                 result.rejection_reason = "Could not fetch exchange limits"
                 return result

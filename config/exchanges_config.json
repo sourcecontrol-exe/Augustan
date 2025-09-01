@@ -1,35 +1,9 @@
 {
   "binance": {
-    "api_key": "",
-    "secret": "",
+    "api_key": "GiILtJYftlkHmrFR9OEtwtUwSW7AwfhjVuNnF2BhfJo9ortqq4Jx6WBrPDNKQ27A",
+    "secret": "I39DvP6C6rE2Ea1gjlwI16cj7igPcImDRiMMayJleOEAjMV2C7JzvcGM1O3VA3JV",
     "enabled": true,
-    "testnet": false
-  },
-  "bybit": {
-    "api_key": "",
-    "secret": "",
-    "enabled": true,
-    "testnet": false
-  },
-  "okx": {
-    "api_key": "",
-    "secret": "",
-    "password": "",
-    "enabled": true,
-    "testnet": false
-  },
-  "bitget": {
-    "api_key": "",
-    "secret": "",
-    "password": "",
-    "enabled": true,
-    "testnet": false
-  },
-  "gate": {
-    "api_key": "",
-    "secret": "",
-    "enabled": true,
-    "testnet": false
+    "testnet": true
   },
   "volume_settings": {
     "min_volume_usd_24h": 1000000,
