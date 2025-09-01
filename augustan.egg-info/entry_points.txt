@@ -1,0 +1,2 @@
+[console_scripts]
+aug = trading_system.cli:cli

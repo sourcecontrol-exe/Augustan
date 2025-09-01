@@ -16,6 +16,7 @@ from .jobs.daily_volume_job import DailyVolumeJob
 from .jobs.enhanced_volume_job import EnhancedVolumeJob
 from .data_feeder.futures_data_feeder import FuturesDataFeeder
 from .core.position_sizing import RiskManagementConfig
+from .core.config_manager import get_config_manager
 
 
 @click.group()
@@ -92,11 +93,14 @@ def volume_analyze(ctx, exchanges, min_volume, max_rank, output, format, save, e
         click.echo("🔍 Starting futures volume analysis...")
     
     try:
+        # Initialize configuration manager
+        config_manager = get_config_manager(ctx.obj['config'])
+        
         if enhanced:
-            # Initialize enhanced volume job with risk config
-            risk_config = RiskManagementConfig(
-                max_budget=budget,
-                max_risk_per_trade=risk_percent / 100.0  # Convert percentage to decimal
+            # Get risk config from centralized configuration with CLI overrides
+            risk_config = config_manager.get_risk_management_config(
+                budget_override=budget,
+                risk_override=risk_percent / 100.0
             )
             job = EnhancedVolumeJob(config_path=ctx.obj['config'], risk_config=risk_config)
         else:
@@ -210,6 +214,13 @@ def position(ctx):
     pass
 
 
+@cli.group()
+@click.pass_context
+def live(ctx):
+    """🚀 Live trading with real-time data"""
+    pass
+
+
 @position.command('analyze')
 @click.option('--symbol', '-s', required=True, help='Symbol to analyze (e.g., BTC/USDT)')
 @click.option('--budget', type=float, default=50.0, help='Trading budget in USDT')
@@ -235,12 +246,14 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
         )
         from .core.futures_models import ExchangeType
         
-        # Initialize components
-        risk_config = RiskManagementConfig(
-            max_budget=budget,
-            max_risk_per_trade=risk_percent / 100.0,
-            default_leverage=leverage
+        # Initialize configuration manager and get risk config
+        config_manager = get_config_manager(ctx.obj['config'])
+        risk_config = config_manager.get_risk_management_config(
+            budget_override=budget,
+            risk_override=risk_percent / 100.0
         )
+        # Update leverage if provided
+        risk_config.default_leverage = leverage
         
         limits_fetcher = ExchangeLimitsFetcher()
         calculator = PositionSizingCalculator(risk_config)
@@ -325,10 +338,11 @@ def position_tradeable(ctx, budget, risk_percent, limit):
     click.echo(f"💰 Finding tradeable symbols for ${budget} budget...")
     
     try:
-        # Initialize enhanced volume job
-        risk_config = RiskManagementConfig(
-            max_budget=budget,
-            max_risk_per_trade=risk_percent / 100.0
+        # Initialize configuration manager and get risk config
+        config_manager = get_config_manager(ctx.obj['config'])
+        risk_config = config_manager.get_risk_management_config(
+            budget_override=budget,
+            risk_override=risk_percent / 100.0
         )
         
         job = EnhancedVolumeJob(config_path=ctx.obj['config'], risk_config=risk_config)
@@ -630,24 +644,38 @@ def config(ctx):
 def config_show(ctx, section):
     """Show current configuration."""
     try:
-        config_path = ctx.obj['config']
-        
-        if not Path(config_path).exists():
-            click.echo(f"❌ Configuration file not found: {config_path}")
-            sys.exit(1)
-        
-        with open(config_path, 'r') as f:
-            config = json.load(f)
+        config_manager = get_config_manager(ctx.obj['config'])
         
         if section:
-            if section not in config:
-                click.echo(f"❌ Section '{section}' not found in configuration")
-                sys.exit(1)
-            config = {section: config[section]}
+            # Show specific section
+            if section == 'risk':
+                config_data = config_manager.get_risk_management_config().to_dict()
+                click.echo(f"📊 Risk Management Configuration:")
+            elif section == 'data':
+                config_data = config_manager.get_data_fetching_config().__dict__
+                click.echo(f"🔄 Data Fetching Configuration:")
+            elif section == 'signals':
+                config_data = config_manager.get_signal_generation_config().__dict__
+                click.echo(f"📈 Signal Generation Configuration:")
+            elif section == 'volume':
+                config_data = config_manager.get_volume_settings().__dict__
+                click.echo(f"📊 Volume Analysis Configuration:")
+            elif section == 'jobs':
+                config_data = config_manager.get_job_settings().__dict__
+                click.echo(f"🤖 Job Settings Configuration:")
+            else:
+                click.echo(f"❌ Unknown section: {section}")
+                click.echo("Available sections: risk, data, signals, volume, jobs")
+                return
+            
+            click.echo(json.dumps(config_data, indent=2, default=str))
+            return
         
-        click.echo("⚙️ Configuration")
-        click.echo("=" * 40)
-        click.echo(json.dumps(config, indent=2))
+        # Show complete configuration
+        config_data = config_manager.get_raw_config()
+        click.echo(f"📋 Complete Configuration:")
+        click.echo("=" * 50)
+        click.echo(json.dumps(config_data, indent=2))
         
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -843,6 +871,200 @@ def _save_results(results, output_path, format_type):
     elif format_type == 'csv':
         # Implement CSV export if needed
         pass
+
+
+@live.command('start')
+@click.option('--symbols', '-s', multiple=True, help='Symbols to trade (e.g., BTC/USDT ETH/USDT)')
+@click.option('--balance', '-b', type=float, default=1000.0, help='Initial account balance')
+@click.option('--duration', '-d', type=int, help='Duration in minutes (default: run indefinitely)')
+@click.option('--paper', is_flag=True, default=True, help='Paper trading mode (default: True)')
+@click.pass_context
+def live_start(ctx, symbols, balance, duration, paper):
+    """
+    Start live trading engine with real-time data.
+    
+    Examples:
+        ./aug live start --symbols BTC/USDT ETH/USDT --balance 1000 --duration 60
+        ./aug live start --symbols DOGE/USDT --paper
+    """
+    try:
+        from .live_trading.live_engine import LiveTradingEngine
+        
+        # Default watchlist if no symbols provided
+        watchlist = list(symbols) if symbols else ['BTC/USDT', 'ETH/USDT', 'DOGE/USDT']
+        
+        click.echo(f"🚀 Starting Live Trading Engine...")
+        click.echo(f"📊 Watchlist: {', '.join(watchlist)}")
+        click.echo(f"💰 Balance: ${balance:.2f}")
+        click.echo(f"📄 Paper Trading: {'Yes' if paper else '⚠️ REAL TRADING'}")
+        
+        if not paper:
+            confirm = click.confirm("⚠️ WARNING: Real trading mode! Continue?")
+            if not confirm:
+                click.echo("Cancelled.")
+                return
+        
+        # Initialize engine
+        engine = LiveTradingEngine(
+            watchlist=watchlist,
+            initial_balance=balance,
+            config_path=ctx.obj['config'],
+            paper_trading=paper
+        )
+        
+        # Add trade callback for CLI output
+        def on_trade(trade_event):
+            click.echo(f"💸 TRADE: {trade_event['symbol']} {trade_event['signal_type']} "
+                      f"- Size: {trade_event['position_size']:.6f}, "
+                      f"Risk: ${trade_event['risk_amount']:.2f}")
+        
+        engine.add_trade_callback(on_trade)
+        
+        # Run the engine
+        if duration:
+            click.echo(f"⏱️ Running for {duration} minutes...")
+            engine.run_sync(duration_minutes=duration)
+        else:
+            click.echo("⏱️ Running indefinitely (Ctrl+C to stop)...")
+            try:
+                engine.run_sync()
+            except KeyboardInterrupt:
+                click.echo("\n⏹️ Stopping engine...")
+                engine.stop()
+        
+        # Show final results
+        status = engine.get_engine_status()
+        click.echo(f"\n📊 Final Results:")
+        click.echo(f"Signals Generated: {status['engine_info']['signals_generated']}")
+        click.echo(f"Trades Executed: {status['engine_info']['trades_executed']}")
+        click.echo(f"Final Balance: ${status['portfolio']['total_account_balance']:.2f}")
+        
+        performance = engine.portfolio_manager.get_performance_stats()
+        if performance.get('total_trades', 0) > 0:
+            click.echo(f"Win Rate: {performance['win_rate']:.1f}%")
+            click.echo(f"Total Return: {performance['current_return']:.2f}%")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@live.command('monitor')
+@click.option('--symbols', '-s', multiple=True, help='Symbols to monitor')
+@click.option('--duration', '-d', type=int, default=60, help='Duration in seconds')
+@click.pass_context
+def live_monitor(ctx, symbols, duration):
+    """
+    Monitor real-time prices for symbols.
+    
+    Examples:
+        ./aug live monitor --symbols BTC/USDT ETH/USDT --duration 120
+        ./aug live monitor --symbols DOGE/USDT
+    """
+    try:
+        from .data_feeder.realtime_feeder import BinanceWebsocketFeeder
+        
+        # Default symbols if none provided
+        watchlist = list(symbols) if symbols else ['BTC/USDT', 'ETH/USDT', 'DOGE/USDT']
+        
+        click.echo(f"📡 Starting real-time price monitor...")
+        click.echo(f"📊 Symbols: {', '.join(watchlist)}")
+        click.echo(f"⏱️ Duration: {duration} seconds")
+        
+        feeder = BinanceWebsocketFeeder(watchlist, timeframe='1m', stream_type='ticker')
+        
+        # Track message count
+        message_count = 0
+        
+        # Price update callback
+        def on_price_update(symbol: str, candle):
+            nonlocal message_count
+            message_count += 1
+            timestamp = candle.timestamp.strftime('%H:%M:%S')
+            click.echo(f"  💰 {symbol}: ${candle.close:.4f} | Vol: {candle.volume:.0f} | {timestamp} | #{message_count}")
+        
+        feeder.add_callback(on_price_update)
+        feeder.start()
+        
+        import time
+        time.sleep(duration)
+        
+        # Stop the feeder immediately to prevent more callbacks
+        feeder.stop()
+        
+        # Show final status
+        status = feeder.get_connection_status()
+        click.echo(f"\n📊 Final Status:")
+        click.echo(f"  Messages received: {message_count}")
+        click.echo(f"  Expected duration: {duration} seconds")
+        for symbol, data in status['symbols'].items():
+            if data['current_price'] > 0:
+                click.echo(f"  {symbol}: ${data['current_price']:.4f} "
+                          f"({data['candle_count']} candles)")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@live.command('test')
+@click.pass_context
+def live_test(ctx):
+    """
+    Test live trading components.
+    
+    Examples:
+        ./aug live test
+    """
+    click.echo("🧪 Testing Live Trading Components...")
+    
+    try:
+        # Test configuration
+        config_manager = get_config_manager(ctx.obj['config'])
+        risk_config = config_manager.get_risk_management_config()
+        click.echo(f"✅ Configuration loaded - Max risk: {risk_config.max_risk_per_trade:.3%}")
+        
+        # Test risk manager
+        from .risk_manager.risk_manager import RiskManager
+        risk_manager = RiskManager(ctx.obj['config'])
+        summary = risk_manager.get_risk_summary(1000.0)
+        click.echo(f"✅ Risk Manager - Max risk per trade: ${summary['max_risk_per_trade_usd']:.2f}")
+        
+        # Test portfolio manager
+        from .risk_manager.portfolio_manager import PortfolioManager
+        portfolio = PortfolioManager(1000.0, ctx.obj['config'])
+        metrics = portfolio.calculate_portfolio_metrics()
+        click.echo(f"✅ Portfolio Manager - Balance: ${metrics.total_account_balance:.2f}")
+        
+        # Test WebSocket connection (brief test)
+        click.echo("📡 Testing WebSocket connection...")
+        from .data_feeder.realtime_feeder import BinanceWebsocketFeeder
+        feeder = BinanceWebsocketFeeder(['BTC/USDT'], timeframe='1m', stream_type='ticker')
+        
+        connection_test_duration = 10
+        click.echo(f"  Connecting for {connection_test_duration} seconds...")
+        
+        feeder.start()
+        import time
+        time.sleep(connection_test_duration)
+        
+        # Stop the feeder immediately to prevent more callbacks
+        feeder.stop()
+        
+        status = feeder.get_connection_status()
+        if status['connected'] and status['symbols']['BTCUSDT']['current_price'] > 0:
+            click.echo(f"✅ WebSocket connection - BTC price: ${status['symbols']['BTCUSDT']['current_price']:.2f}")
+        else:
+            click.echo("⚠️ WebSocket connection test inconclusive")
+        
+        click.echo("\n🎉 All components tested successfully!")
+        click.echo("🚀 System ready for live trading")
+        
+    except Exception as e:
+        click.echo(f"❌ Test failed: {e}", err=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == '__main__':

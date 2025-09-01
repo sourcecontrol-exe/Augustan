@@ -112,6 +112,7 @@ class RiskManagementConfig:
     max_position_percent: float = 0.1  # Maximum 10% of budget per position
     
     def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
         return {
             'max_budget': self.max_budget,
             'max_risk_per_trade': self.max_risk_per_trade,
