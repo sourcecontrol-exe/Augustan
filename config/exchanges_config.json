@@ -1,0 +1,44 @@
+{
+  "binance": {
+    "api_key": "",
+    "secret": "",
+    "enabled": true,
+    "testnet": false
+  },
+  "bybit": {
+    "api_key": "",
+    "secret": "",
+    "enabled": true,
+    "testnet": false
+  },
+  "okx": {
+    "api_key": "",
+    "secret": "",
+    "password": "",
+    "enabled": true,
+    "testnet": false
+  },
+  "bitget": {
+    "api_key": "",
+    "secret": "",
+    "password": "",
+    "enabled": true,
+    "testnet": false
+  },
+  "gate": {
+    "api_key": "",
+    "secret": "",
+    "enabled": true,
+    "testnet": false
+  },
+  "volume_settings": {
+    "min_volume_usd_24h": 1000000,
+    "min_volume_rank": 200,
+    "max_markets_per_exchange": 100
+  },
+  "job_settings": {
+    "schedule_time": "09:00",
+    "retention_days": 30,
+    "output_directory": "volume_data"
+  }
+}

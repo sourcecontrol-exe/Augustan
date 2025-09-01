@@ -1,0 +1,30 @@
+[Unit]
+Description=Futures Trading System - Daily Volume Analysis
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trading
+Group=trading
+WorkingDirectory=/opt/augustan
+ExecStart=/usr/bin/python3 futures_main.py --daily-job
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONPATH=/opt/augustan
+
+# Resource limits
+MemoryMax=1G
+CPUQuota=50%
+
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/augustan/volume_data /opt/augustan/logs
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

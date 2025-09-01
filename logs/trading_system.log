@@ -1,0 +1,57 @@
+2025-09-01 22:11:27.365 | INFO     | __main__:__init__:30 - Trading System initialized
+2025-09-01 22:11:27.365 | INFO     | __main__:run_analysis:44 - Starting analysis for timeframe: 1h, limit: 100
+2025-09-01 22:11:27.366 | INFO     | __main__:run_analysis:47 - Fetching market data from Binance...
+2025-09-01 22:11:32.874 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for BTC/USDT
+2025-09-01 22:11:33.360 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for ETH/USDT
+2025-09-01 22:11:33.846 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for BNB/USDT
+2025-09-01 22:11:34.328 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for ADA/USDT
+2025-09-01 22:11:34.813 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for SOL/USDT
+2025-09-01 22:11:35.295 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for XRP/USDT
+2025-09-01 22:11:35.781 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for DOT/USDT
+2025-09-01 22:11:36.265 | INFO     | src.data_feeder.binance_feeder:fetch_ohlcv:72 - Fetched 100 candles for AVAX/USDT
+2025-09-01 22:11:36.265 | INFO     | src.data_feeder.binance_feeder:fetch_multiple_symbols:101 - Fetched data for 8 symbols
+2025-09-01 22:11:36.265 | INFO     | __main__:run_analysis:54 - Fetched data for 8 symbols
+2025-09-01 22:11:36.265 | INFO     | __main__:run_analysis:57 - Running trading strategies...
+2025-09-01 22:11:36.266 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for BTC/USDT
+2025-09-01 22:11:36.266 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for BTC/USDT
+2025-09-01 22:11:36.277 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.289 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.289 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for BTC/USDT
+2025-09-01 22:11:36.289 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for ETH/USDT
+2025-09-01 22:11:36.290 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for ETH/USDT
+2025-09-01 22:11:36.296 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.305 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.305 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for ETH/USDT
+2025-09-01 22:11:36.305 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for BNB/USDT
+2025-09-01 22:11:36.306 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for BNB/USDT
+2025-09-01 22:11:36.311 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.318 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.318 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for BNB/USDT
+2025-09-01 22:11:36.318 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for ADA/USDT
+2025-09-01 22:11:36.318 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for ADA/USDT
+2025-09-01 22:11:36.322 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.328 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.328 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for ADA/USDT
+2025-09-01 22:11:36.329 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for SOL/USDT
+2025-09-01 22:11:36.329 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for SOL/USDT
+2025-09-01 22:11:36.332 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 0 signals
+2025-09-01 22:11:36.338 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.338 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 1 total signals for SOL/USDT
+2025-09-01 22:11:36.338 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for XRP/USDT
+2025-09-01 22:11:36.338 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for XRP/USDT
+2025-09-01 22:11:36.342 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.347 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.347 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for XRP/USDT
+2025-09-01 22:11:36.347 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for DOT/USDT
+2025-09-01 22:11:36.347 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for DOT/USDT
+2025-09-01 22:11:36.350 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.355 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.355 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for DOT/USDT
+2025-09-01 22:11:36.356 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:77 - Processing strategies for AVAX/USDT
+2025-09-01 22:11:36.356 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:60 - Running all strategies for AVAX/USDT
+2025-09-01 22:11:36.359 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - RSI generated 1 signals
+2025-09-01 22:11:36.363 | INFO     | src.strategy_engine.strategy_engine:run_single_strategy:45 - MACD generated 1 signals
+2025-09-01 22:11:36.363 | INFO     | src.strategy_engine.strategy_engine:run_all_strategies:67 - Generated 2 total signals for AVAX/USDT
+2025-09-01 22:11:36.363 | INFO     | src.strategy_engine.strategy_engine:run_strategies_for_multiple_symbols:81 - Completed strategy processing for 8 symbols
+2025-09-01 22:11:36.364 | INFO     | __main__:run_analysis:72 - Analysis complete. Generated signals for 8 symbols
+2025-09-01 22:11:36.364 | INFO     | __main__:save_results:115 - Results saved to signals_20250901_221136.json

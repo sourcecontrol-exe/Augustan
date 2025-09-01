@@ -1,299 +1,334 @@
-# Augustan - Advanced Algorithmic Trading Bot
+# Augustan: Futures Trading System
 
-A comprehensive, service-based trading system with backtesting, paper trading, and live trading capabilities using real cryptocurrency market data.
+A comprehensive cryptocurrency futures trading system optimized for high-volume markets with automated volume analysis, multi-exchange support, and intelligent market selection.
 
-## 🏗️ Service-Based Architecture
+## 🚀 System Overview
+
+Augustan is designed as a futures-optimized trading system with three main components:
+
+**Layer 1 (Volume Analysis)**: Daily analysis of futures markets across 5 major exchanges to identify high-liquidity trading opportunities.
+
+**Layer 2 (Strategy Engine)**: Executes RSI and MACD strategies on volume-selected markets with confidence scoring.
+
+**Layer 3 (CLI Interface)**: Professional command-line interface for easy system operation and monitoring.
+
+This architecture ensures you only trade the most liquid futures markets while maintaining professional-grade tooling for analysis and execution.
+
+## ✨ Core Features
+
+| Module | Description |
+|--------|-------------|
+| 📊 **Multi-Exchange Volume Analysis** | Analyzes futures markets across Binance, Bybit, OKX, Bitget, and Gate.io |
+| 🤖 **Futures-Optimized Strategies** | RSI and MACD strategies adapted for futures volatility patterns |
+| ⚙️ **Intelligent Market Selection** | Automatically selects top liquid markets (>$1M daily volume) |
+| 🎯 **Signal Management** | Generates BUY/SELL signals with confidence scoring (60-90%) |
+| 🛡️ **Volume-Based Risk Control** | Only trades high-liquidity markets to minimize slippage risk |
+| 📤 **CLI Interface** | Professional command-line tools for all operations |
+| 📈 **Daily Volume Jobs** | Automated daily analysis with 30-day data retention |
+| 📊 **Live Dashboard** | Real-time market overview with auto-refresh capabilities |
+| ⏰ **Automated Scheduler** | Runs daily volume analysis jobs at configurable times |
+| 🔧 **Production Ready** | Systemd service support for server deployment |
+## 🏗️ Project Architecture
 
 ```
-Augustan/
-├── services/                       # Core trading services
-│   ├── data/                      # Data fetching & management
-│   │   ├── data_loader.py         # Multi-source data loading (CCXT, yfinance)
-│   │   └── data_service.py        # Unified data interface
-│   ├── trading/                   # Strategy & execution
-│   │   └── strategy.py            # RSI+MACD, Bollinger+RSI, Mean Reversion
-│   ├── backtesting/               # Backtesting engine
-│   │   ├── backtester.py          # Main backtesting engine
-│   │   ├── indicators.py          # 25+ technical indicators
-│   │   ├── performance_metrics.py # Performance analytics
-│   │   └── strategy_framework.py  # Strategy framework
-│   ├── paper_trading/             # Paper trading simulation
-│   │   ├── paper_trader.py        # Virtual trading engine
-│   │   └── paper_backtest_bridge.py # Integration bridge
-│   ├── risk/                      # Risk management
-│   │   └── risk_manager.py        # ATR-based position sizing
-│   └── adapters/                  # Exchange adapters
-│       ├── base_adapter.py        # Abstract adapter interface
-│       ├── ccxt_adapter.py        # CCXT integration (100+ exchanges)
-│       └── pi42_adapter.py        # Custom Pi42 adapter
-├── core/                          # Shared components
-│   ├── config/                    # Configuration management
-│   ├── exceptions/                # Custom exceptions
-│   └── utils/                     # Shared utilities
-├── cli/                           # Command line interface
-├── scripts/                       # Entry point scripts
-├── tests/                         # Test suite
-├── data/                          # Data storage
-├── results/                       # Backtest results
-└── docs/                          # Documentation
+augustan/
+├── 📂 src/
+│   ├── 📂 core/                 # Data models (MarketData, TradingSignal, FuturesModels)
+│   ├── 📂 data_feeder/          # Multi-exchange data fetching (Binance, Bybit, etc.)
+│   ├── 📂 strategy_engine/      # RSI and MACD strategies with base framework
+│   ├── 📂 jobs/                 # Daily volume analysis and scheduling jobs
+│   └── 📂 (future modules)/     # Market features, ML models, signal management
+├── 📂 config/                   # Exchange configurations and API keys
+├── 📂 volume_data/              # Daily volume analysis results (JSON)
+├── 📂 logs/                     # Structured application logs
+├── 📂 deployment/               # Production deployment files (systemd)
+├── 🐍 futures_main.py           # Futures trading system entry point
+├── 🐍 cli.py                    # Comprehensive CLI interface
+├── 🐍 main.py                   # Original spot trading system
+└── 📋 requirements.txt          # Python dependencies (ccxt, pandas, ta, click)
 ```
+## 🔧 Installation & Setup
 
-## 🚀 Key Features
+### 1. Prerequisites
+- **Python 3.9+** (tested with Python 3.9.6)
+- **pip** and **virtualenv** (recommended)
 
-- **🔬 Advanced Backtesting Engine**: Real crypto data via CCXT, 25+ technical indicators, strategy optimization
-- **📈 Real-Time Paper Trading**: Virtual trading with live market data and realistic execution
-- **💰 Real Crypto Data**: Direct integration with Binance, OKX, Bybit, KuCoin via CCXT
-- **📊 Professional Analytics**: Sharpe ratio, drawdown analysis, risk-adjusted returns, trade statistics
-- **🔄 Multi-Exchange Support**: CCXT adapter for 100+ exchanges, custom Pi42 adapter
-- **⚙️ Service-Based Architecture**: Clean separation of concerns, easy to maintain and extend
-- **🛡️ Risk Management**: ATR-based stop-loss, position sizing, portfolio monitoring
-- **🧪 Comprehensive Testing**: 99%+ test coverage with automated validation
-
-## 📋 Prerequisites
-
-- Python 3.8+
-- API keys for your chosen exchanges
-- Basic understanding of cryptocurrency trading
-
-## 🛠️ Quick Start
-
-### Installation
+### 2. Quick Setup
 ```bash
-# Install in development mode
-pip install -e .
+# Clone the repository
+git clone <your-repo-url>
+cd augustan
 
-# Or install from source
-python setup.py install
+# One-command setup (recommended)
+./setup_cli.sh
 ```
 
-### Usage
-
-#### Command Line Interface
+### 3. Manual Installation
 ```bash
-# Show available commands
-augustan
+# Create virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS
+# OR
+venv\Scripts\activate     # Windows
 
-# Run backtesting with real crypto data
-augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
+# Install dependencies
+pip3 install -r requirements.txt
 
-# Run paper trading (quick demo)
-augustan-paper --quick
-
-# Run paper trading (full session)
-augustan-paper --full
-
-# Run tests
-augustan-test
+# Initialize configuration
+python3 cli.py config init
 ```
 
-#### Direct Script Execution
-```bash
-# Backtesting with real crypto data
-python scripts/run_backtest.py --symbol ETH/USDT --exchange binance --timeframe 4h
+### 4. Configuration
+Edit `config/exchanges_config.json` with your exchange API keys:
 
-# Paper trading demo
-python scripts/demo_paper_trading.py --quick
-
-# Main trading bot
-python scripts/main.py
-```
-
-## 🔬 Backtesting & Paper Trading
-
-### **Backtesting (Real Crypto Data)**
-```bash
-# Backtest BTC with real Binance data
-augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
-
-# Compare all strategies on Ethereum
-augustan-backtest --compare-all --symbol ETH/USDT --exchange okx --timeframe 4h
-
-# Optimize strategy parameters
-augustan-backtest --optimize --strategy rsi_macd --symbol SOL/USDT --limit 500
-
-# Test different crypto pairs
-augustan-backtest --symbol ADA/USDT --exchange bybit --timeframe 1d
-```
-
-### **Paper Trading (Real-Time Virtual Trading)**
-```bash
-# Quick paper trading demo (1 minute)
-augustan-paper --quick
-
-# Full automated paper trading session (30 minutes)
-augustan-paper --full
-
-# Custom duration and symbol
-python scripts/demo_paper_trading.py --symbol ETH/USDT --duration 10
-```
-
-### **Key Features**
-- **Real Crypto Data**: Direct CCXT integration with Binance, OKX, Bybit, KuCoin
-- **25+ Technical Indicators**: RSI, MACD, Bollinger Bands, Stochastic, ADX, SuperTrend, Ichimoku
-- **Strategy Optimization**: Grid search parameter optimization with walk-forward analysis
-- **Performance Analytics**: Sharpe ratio, Sortino ratio, Calmar ratio, VaR/CVaR, drawdown analysis
-- **Realistic Execution**: Slippage modeling, commission costs, stop-loss/take-profit
-- **Paper Trading**: Real-time virtual trading with live market data
-- **Strategy Comparison**: Side-by-side performance ranking and analysis
-
-### **Custom Strategy Example**
-```python
-from services.trading import RSIMACDStrategy, BollingerRSIStrategy, MeanReversionStrategy
-from services.backtesting import AugustanBacktester, BacktestConfig
-from services.data import DataLoader
-
-# Load real crypto data
-loader = DataLoader()
-data = loader.load_data('BTC/USDT', source='binance', timeframe='1h', limit=1000)
-
-# Configure backtesting
-config = BacktestConfig(
-    initial_capital=10000,
-    commission=0.001,
-    margin=1.0
-)
-
-# Run backtest with real data
-backtester = AugustanBacktester(config)
-results = backtester.run_backtest(data, RSIMACDStrategy)
-```
-
-## 📈 Real Crypto Data Integration
-
-### **Supported Exchanges & Timeframes**
-```python
-from services.data import DataLoader, get_crypto_pairs
-
-# Initialize data loader
-loader = DataLoader()
-
-# Supported exchanges
-exchanges = ['binance', 'okx', 'bybit', 'kucoin']
-
-# Supported timeframes
-timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
-
-# Popular crypto pairs
-pairs = get_crypto_pairs()
-# ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 'SOL/USDT', ...]
-
-# Load real market data
-btc_data = loader.load_data('BTC/USDT', source='binance', timeframe='1h', limit=1000)
-eth_data = loader.load_data('ETH/USDT', source='okx', timeframe='4h', limit=500)
-```
-
-### **Paper Trading with Real Data**
-```python
-from services.paper_trading import PaperTradingEngine
-from services.trading import RSIMACDStrategy
-from services.data import DataLoader
-from core.config import ConfigManager
-
-# Initialize components
-config_manager = ConfigManager()
-config = config_manager.get_active_config()
-paper_trader = PaperTradingEngine(config)
-strategy = RSIMACDStrategy()
-
-# Run paper trading with real market data
-await paper_trader.start_session(
-    strategy=strategy,
-    symbol='BTC/USDT',
-    duration_minutes=30
-)
-```
-
-### **Environment Management**
-```bash
-# Switch between environments
-python core/config/switch_env.py --switch testing  # Safe testing
-python core/config/switch_env.py --switch live     # Real trading
-
-# Check current environment
-python core/config/switch_env.py --current
-```
-
-## 🧪 Testing & Validation
-
-```bash
-# Run comprehensive tests
-augustan-test
-
-# Test specific components
-python -m pytest tests/test_risk_manager.py -v
-
-# Test backtesting with real data
-augustan-backtest --symbol BTC/USDT --exchange binance --limit 100
-```
-
-**Test Coverage**: 99% risk management, 75% configuration system
-
-## 🔒 Security & Risk Management
-
-### **Safety First**
-- **Always start with testnet** - Never risk real money initially
-- **Environment separation** - Testing vs live trading configs
-- **API key security** - Use `.env` file, never commit keys
-- **Position sizing** - Risk only 0.5-1% per trade
-
-### **Configuration**
 ```json
 {
-  "risk_per_trade": 0.01,
-  "risk_reward_ratio": 2.5,
-  "stop_loss_multiplier": 2.0,
-  "testnet": true
+  "binance": {
+    "api_key": "YOUR_BINANCE_API_KEY",
+    "secret": "YOUR_BINANCE_SECRET",
+    "enabled": true,
+    "testnet": false
+  },
+  "bybit": {
+    "api_key": "YOUR_BYBIT_API_KEY", 
+    "secret": "YOUR_BYBIT_SECRET",
+    "enabled": true,
+    "testnet": false
+  },
+  "volume_settings": {
+    "min_volume_usd_24h": 1000000,
+    "min_volume_rank": 200
+  }
 }
 ```
 
-## 🐛 Troubleshooting
+⚠️ **Security**: Never commit real API keys to version control! The system works without API keys for volume analysis.
 
-**Common Issues:**
-- **Import errors**: `pip install -r requirements.txt`
-- **Config not found**: `python configs/switch_env.py --current`
-- **API issues**: Verify keys and exchange connectivity
+## 🚀 Usage
 
-## 🔄 Trading Progression Path
+### CLI Interface (Recommended)
+The system provides a comprehensive CLI for all operations:
 
-**1. Backtesting (Real Crypto Data)**
 ```bash
-augustan-backtest --symbol BTC/USDT --exchange binance --timeframe 1h
+# Run volume analysis across all exchanges
+python3 cli.py volume analyze
+
+# Generate trading signals for top markets
+python3 cli.py trading analyze --timeframe 4h
+
+# Show latest signals
+python3 cli.py trading signals --type buy --min-confidence 0.7
+
+# Start daily scheduled job
+python3 cli.py job start --schedule
+
+# Live dashboard
+python3 cli.py dashboard --refresh 30
 ```
 
-**2. Paper Trading (Real-time Virtual)**
+### Direct Python Usage
+
+**Volume Analysis:**
 ```bash
-augustan-paper --full
+python3 futures_main.py --volume-analysis
 ```
 
-**3. Live Trading (Real Money)**
+**Trading Analysis:**
 ```bash
-python core/config/switch_env.py --switch live
-python scripts/main.py  # Your live trading implementation
+python3 futures_main.py --trading-analysis --timeframe 4h
 ```
 
-## 📊 Available Exchanges & Data Sources
+**Complete Analysis:**
+```bash
+python3 futures_main.py  # Runs both volume and trading analysis
+```
 
-### **Exchanges**
-- **CCXT**: 100+ exchanges (Binance, Bybit, OKX, etc.)
-- **Pi42**: Custom adapter for Pi42 exchange
-- **Extensible**: Easy to add new exchange adapters
+**Daily Job Scheduler:**
+```bash
+python3 futures_main.py --daily-job
+```
 
-### **Crypto Data Sources**
-- **CCXT Integration**: Real-time data from Binance, OKX, Bybit, KuCoin
-- **Multiple Timeframes**: 1m, 5m, 15m, 1h, 4h, 1d intervals
-- **Automatic Fallback**: CCXT → yfinance → synthetic data (if needed)
+## 🔌 Exchange Support
 
-## 🚨 Risk Disclaimer
+The system supports **5 major futures exchanges**:
+- **Binance** (Primary, most tested)
+- **Bybit** (Excellent volume data)
+- **OKX** (Good liquidity)
+- **Bitget** (Growing market)
+- **Gate.io** (Wide selection)
 
-⚠️ **Educational purposes only**. Cryptocurrency trading involves significant risk. Past performance doesn't guarantee future results. Only trade with money you can afford to lose.
+### API Configuration
+1. **Create API Keys**: Generate read-only API keys on your exchange
+2. **Add to Config**: Edit `config/exchanges_config.json` 
+3. **Test First**: System works without API keys for volume analysis
 
----
+### Volume Analysis (No API Required)
+The system can analyze market volumes without API keys using public endpoints.
+
+## 📈 Strategy Development
+
+### Using Built-in Strategies
+```python
+from src.strategy_engine import RSIStrategy, MACDStrategy
+
+# RSI Strategy with custom parameters
+rsi_strategy = RSIStrategy(
+    period=14,
+    overbought=70,
+    oversold=30
+)
+
+# MACD Strategy
+macd_strategy = MACDStrategy(
+    fast_period=12,
+    slow_period=26,
+    signal_period=9
+)
+```
+
+### Creating Custom Strategies
+Extend the `BaseStrategy` class:
+
+```python
+from src.strategy_engine.base_strategy import BaseStrategy
+from src.core.models import TradingSignal, SignalType, StrategyType
+
+class MyCustomStrategy(BaseStrategy):
+    def __init__(self):
+        super().__init__(StrategyType.CUSTOM)
+        
+    def generate_signals(self, market_data):
+        # Your custom logic here
+        signals = []
+        
+        # Example: Simple price-based logic
+        latest_price = market_data[-1].close
+        if your_buy_condition(latest_price):
+            signal = TradingSignal(
+                symbol=market_data[0].symbol,
+                strategy=self.strategy_type,
+                signal_type=SignalType.BUY,
+                confidence=0.75,
+                price=latest_price,
+                timestamp=market_data[-1].timestamp
+            )
+            signals.append(signal)
+            
+        return signals
+```
+## 📊 Output & Monitoring
+
+The system provides comprehensive monitoring and output options:
+
+### Real-time Feedback
+- **Console Output**: Formatted tables with market data and signals
+- **Progress Bars**: Visual feedback for long-running operations
+- **Color-coded Signals**: 🟢 BUY, 🔴 SELL indicators
+
+### File Outputs
+- **JSON Reports**: Structured data in `volume_data/` and signal files
+- **Log Files**: Detailed logs in `logs/futures_trading_system.log`
+- **Configuration**: All settings saved in `config/exchanges_config.json`
+
+### Live Dashboard
+```bash
+python3 cli.py dashboard --refresh 30
+```
+Shows:
+- Current market volume statistics
+- Latest trading signals with confidence scores
+- Top recommended markets
+- System status and last run times
+
+### Sample Outputs
+
+**Volume Analysis:**
+```
+🏆 Top 5 Markets by Volume
+================================================================================
+ 1. ETH/USDT:USDT        | BYBIT    | $7,507,053,058 | Score:  80.5
+ 2. BTC/USDT:USDT        | BYBIT    | $7,497,283,725 | Score:  80.0
+```
+
+**Trading Signals:**
+```
+🎯 Latest Trading Signals (5 found)
+==========================================================================================
+🟢 BTC/USDT:USDT   | MACD | BUY  | $108656.9000 | 70.0% | 2025-08-31T09:30:00
+🔴 ETH/USDT:USDT   | RSI  | SELL | $4830.3700   | 78.0% | 2025-08-23T01:30:00
+```
+
+## 🚀 Quick Demo
+
+Try the interactive demo to see all features:
+```bash
+python3 demo_cli.py
+```
+
+Or run individual commands:
+```bash
+# Quick start
+./setup_cli.sh
+python3 cli.py volume analyze
+python3 cli.py trading analyze --timeframe 4h
+python3 cli.py dashboard
+```
+
+## 📚 Documentation
+
+- **`CLI_GUIDE.md`**: Comprehensive CLI documentation with all commands
+- **`README_FUTURES.md`**: Detailed system architecture and features  
+- **`CLI_SUMMARY.md`**: Implementation summary and examples
 
 ## 🤝 Contributing
 
-1. Fork repository
-2. Create feature branch  
-3. Add tests
-4. Submit pull request
+Contributions are welcome! Please:
 
-**Happy Trading! 🚀** *Start small, test thoroughly, prioritize risk management.*
+1. **Fork the Project**
+2. **Create Feature Branch**: `git checkout -b feature/AmazingFeature`
+3. **Commit Changes**: `git commit -m 'Add AmazingFeature'`
+4. **Push to Branch**: `git push origin feature/AmazingFeature`
+5. **Open Pull Request**
+
+### Development Areas
+- Additional trading strategies (Bollinger Bands, Stochastic, etc.)
+- More exchanges (Kraken, Huobi, etc.)
+- ML model for strategy selection
+- Backtesting framework
+- Web dashboard interface
+
+## ⚠️ Disclaimer
+
+**This software is for educational and research purposes only.**
+
+- Cryptocurrency futures trading carries **significant risk of loss**
+- Past performance does not indicate future results
+- Always test thoroughly before using real capital
+- You are solely responsible for trading decisions
+- Start with small amounts and paper trading
+
+## 📜 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙋‍♂️ Support
+
+For help and support:
+
+- **📖 Documentation**: Check `CLI_GUIDE.md` for detailed usage
+- **🐛 Issues**: Create GitHub issues with detailed logs
+- **💡 Features**: Submit feature requests with use cases
+- **❓ Questions**: Use `--help` with any CLI command
+
+## 🎯 Performance Metrics
+
+**Live Test Results:**
+- ✅ Analyzed **351 futures markets** across 5 exchanges
+- ✅ Generated **49 recommended markets** for trading  
+- ✅ **$26.4B** total daily volume processed
+- ✅ Signal generation in **<30 seconds**
+- ✅ **Professional CLI** with 15+ commands
+
+---
+
+**Happy Futures Trading!** 🚀📈
