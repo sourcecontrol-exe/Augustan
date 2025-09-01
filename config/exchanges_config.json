@@ -42,8 +42,8 @@
     "output_directory": "volume_data"
   },
   "risk_management": {
-    "default_budget": 50.0,
-    "max_risk_per_trade": 0.002,
+    "default_budget": 500.0,
+    "max_risk_per_trade": 0.02,
     "min_safety_ratio": 1.5,
     "default_leverage": 5,
     "max_position_percent": 0.1,

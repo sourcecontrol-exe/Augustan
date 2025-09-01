@@ -29,9 +29,16 @@ trading_system/data_feeder/__init__.py
 trading_system/data_feeder/binance_feeder.py
 trading_system/data_feeder/exchange_limits_fetcher.py
 trading_system/data_feeder/futures_data_feeder.py
+trading_system/data_feeder/realtime_feeder.py
 trading_system/jobs/__init__.py
 trading_system/jobs/daily_volume_job.py
 trading_system/jobs/enhanced_volume_job.py
+trading_system/live_trading/__init__.py
+trading_system/live_trading/live_engine.py
+trading_system/live_trading/signal_processor.py
+trading_system/risk_manager/__init__.py
+trading_system/risk_manager/portfolio_manager.py
+trading_system/risk_manager/risk_manager.py
 trading_system/strategy_engine/__init__.py
 trading_system/strategy_engine/base_strategy.py
 trading_system/strategy_engine/macd_strategy.py

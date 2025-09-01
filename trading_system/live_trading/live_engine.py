@@ -101,8 +101,9 @@ class LiveTradingEngine:
         logger.info("🛑 Stopping Live Trading Engine...")
         self.is_running = False
         
-        # Stop real-time feeds
+        # Stop real-time feeds with cleanup
         self.realtime_feeder.stop()
+        self.realtime_feeder.cleanup()
         
         # Close all positions if in paper trading mode
         if self.paper_trading:

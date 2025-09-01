@@ -49,6 +49,7 @@ def test_realtime_updates():
     
     # Stop the feeder immediately to prevent more callbacks
     feeder.stop()
+    feeder.cleanup()
     
     # Analysis
     print("\n📊 RESULTS ANALYSIS:")

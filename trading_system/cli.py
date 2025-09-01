@@ -19,6 +19,54 @@ from .core.position_sizing import RiskManagementConfig
 from .core.config_manager import get_config_manager
 
 
+# Auto-completion functions
+def get_symbols(ctx, args, incomplete):
+    """Auto-complete for trading symbols."""
+    common_symbols = [
+        'BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'DOGE/USDT',
+        'ADA/USDT', 'BNB/USDT', 'AVAX/USDT', 'LINK/USDT', 'UNI/USDT',
+        'DOT/USDT', 'LTC/USDT', 'BCH/USDT', 'XLM/USDT', 'ATOM/USDT',
+        'NEAR/USDT', 'FTM/USDT', 'ALGO/USDT', 'VET/USDT', 'ICP/USDT'
+    ]
+    return [s for s in common_symbols if incomplete.upper() in s.upper()]
+
+
+def get_exchanges(ctx, args, incomplete):
+    """Auto-complete for exchange names."""
+    exchanges = ['binance', 'bybit', 'okx', 'bitget', 'gate']
+    return [e for e in exchanges if incomplete.lower() in e.lower()]
+
+
+def get_timeframes(ctx, args, incomplete):
+    """Auto-complete for timeframes."""
+    timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w']
+    return [t for t in timeframes if incomplete.lower() in t.lower()]
+
+
+def get_strategies(ctx, args, incomplete):
+    """Auto-complete for trading strategies."""
+    strategies = ['rsi', 'macd', 'all']
+    return [s for s in strategies if incomplete.lower() in s.lower()]
+
+
+def get_signal_types(ctx, args, incomplete):
+    """Auto-complete for signal types."""
+    signal_types = ['buy', 'sell', 'all']
+    return [s for s in signal_types if incomplete.lower() in s.lower()]
+
+
+def get_config_sections(ctx, args, incomplete):
+    """Auto-complete for configuration sections."""
+    sections = ['risk', 'data', 'signals', 'volume', 'jobs', 'all']
+    return [s for s in sections if incomplete.lower() in s.lower()]
+
+
+def get_output_formats(ctx, args, incomplete):
+    """Auto-complete for output formats."""
+    formats = ['json', 'csv', 'table']
+    return [f for f in formats if incomplete.lower() in f.lower()]
+
+
 @click.group()
 @click.version_option(version="1.0.0", prog_name="Augustan Trading CLI")
 @click.option('--config', '-c', default='config/exchanges_config.json', 
@@ -33,12 +81,14 @@ def cli(ctx, config, verbose):
     multi-exchange support, and intelligent risk management.
     
     Examples:
-        ./aug volume analyze --enhanced               # Enhanced volume analysis with position sizing
-        ./aug position analyze --symbol DOGE/USDT    # Analyze position sizing for DOGE
-        ./aug position tradeable --budget 50          # Find tradeable symbols for $50 budget
-        ./aug trading analyze --timeframe 4h          # Generate trading signals
-        ./aug job start --schedule                    # Start daily job
-        ./aug config show                             # Show configuration
+        aug volume analyze --enhanced               # Enhanced volume analysis with position sizing
+        aug position analyze --symbol DOGE/USDT    # Analyze position sizing for DOGE
+        aug position tradeable --budget 50          # Find tradeable symbols for $50 budget
+        aug trading analyze --timeframe 4h          # Generate trading signals
+        aug job start --schedule                    # Start daily job
+        aug config show                             # Show configuration
+        
+    Auto-completion: Press TAB to get suggestions for commands, options, and values.
     """
     ctx.ensure_object(dict)
     ctx.obj['config'] = config
@@ -57,14 +107,15 @@ def volume(ctx):
 
 @volume.command('analyze')
 @click.option('--exchanges', '-e', multiple=True, 
-              type=click.Choice(['binance', 'bybit', 'okx', 'bitget', 'gate']),
+              shell_complete=get_exchanges,
               help='Specific exchanges to analyze (default: all)')
 @click.option('--min-volume', '-m', type=float, default=1000000,
               help='Minimum 24h volume in USD (default: 1M)')
 @click.option('--max-rank', '-r', type=int, default=200,
               help='Maximum volume rank to consider (default: 200)')
 @click.option('--output', '-o', help='Output file path (default: auto-generated)')
-@click.option('--format', '-f', type=click.Choice(['json', 'csv', 'table']), 
+@click.option('--format', '-f', 
+              shell_complete=get_output_formats,
               default='table', help='Output format')
 @click.option('--save/--no-save', default=True, help='Save results to file')
 @click.option('--enhanced', is_flag=True, help='Run enhanced analysis with position sizing')
@@ -82,10 +133,10 @@ def volume_analyze(ctx, exchanges, min_volume, max_rank, output, format, save, e
     symbols that fit within your budget and risk parameters.
     
     Examples:
-        ./aug volume analyze
-        ./aug volume analyze --enhanced --budget 100 --risk-percent 0.5
-        ./aug volume analyze --exchanges bybit --min-volume 5000000
-        ./aug volume analyze --format json --output my_analysis.json
+        aug volume analyze
+        aug volume analyze --enhanced --budget 100 --risk-percent 0.5
+        aug volume analyze --exchanges bybit --min-volume 5000000
+        aug volume analyze --format json --output my_analysis.json
     """
     if enhanced:
         click.echo("🔍 Starting enhanced futures volume analysis with position sizing...")
@@ -222,7 +273,7 @@ def live(ctx):
 
 
 @position.command('analyze')
-@click.option('--symbol', '-s', required=True, help='Symbol to analyze (e.g., BTC/USDT)')
+@click.option('--symbol', '-s', required=True, shell_complete=get_symbols, help='Symbol to analyze (e.g., BTC/USDT)')
 @click.option('--budget', type=float, default=50.0, help='Trading budget in USDT')
 @click.option('--risk-percent', type=float, default=0.2, help='Risk per trade in %')
 @click.option('--leverage', type=int, default=5, help='Leverage to use (1-100x)')
@@ -233,8 +284,8 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
     Analyze position sizing for a specific symbol.
     
     Examples:
-        ./aug position analyze --symbol BTC/USDT --budget 100
-        ./aug position analyze --symbol ETH/USDT --risk-percent 0.5 --leverage 10
+        aug position analyze --symbol BTC/USDT --budget 100
+        aug position analyze --symbol ETH/USDT --risk-percent 0.5 --leverage 10
     """
     click.echo(f"💰 Analyzing position sizing for {symbol}...")
     
@@ -332,8 +383,8 @@ def position_tradeable(ctx, budget, risk_percent, limit):
     Show tradeable symbols based on position sizing analysis.
     
     Examples:
-        ./aug position tradeable --budget 100 --limit 30
-        ./aug position tradeable --risk-percent 0.5
+        aug position tradeable --budget 100 --limit 30
+        aug position tradeable --risk-percent 0.5
     """
     click.echo(f"💰 Finding tradeable symbols for ${budget} budget...")
     
@@ -352,7 +403,7 @@ def position_tradeable(ctx, budget, risk_percent, limit):
         
         if not tradeable_symbols:
             click.echo("❌ No tradeable symbols found. Try running enhanced analysis first:", err=True)
-            click.echo("   ./aug volume analyze --enhanced")
+            click.echo("   aug volume analyze --enhanced")
             sys.exit(1)
         
         click.echo(f"\n🎯 Top {len(tradeable_symbols)} Tradeable Symbols")
@@ -382,19 +433,17 @@ def trading(ctx):
 
 
 @trading.command('analyze')
-@click.option('--symbols', '-s', multiple=True, help='Specific symbols to analyze')
-@click.option('--timeframe', '-t', type=click.Choice(['1m', '5m', '1h', '4h', '1d']), 
-              default='4h', help='Timeframe for analysis')
+@click.option('--symbols', '-s', multiple=True, shell_complete=get_symbols, help='Specific symbols to analyze')
+@click.option('--timeframe', '-t', shell_complete=get_timeframes, default='4h', help='Timeframe for analysis')
 @click.option('--limit', '-l', type=int, default=100, help='Number of candles to fetch')
 @click.option('--top', type=int, default=20, help='Number of top volume symbols to analyze')
 @click.option('--strategies', multiple=True, 
-              type=click.Choice(['rsi', 'macd', 'all']), default=['all'],
+              shell_complete=get_strategies, default=['all'],
               help='Strategies to run')
 @click.option('--min-confidence', type=float, default=0.6, 
               help='Minimum confidence threshold for signals')
 @click.option('--output', '-o', help='Output file path')
-@click.option('--format', '-f', type=click.Choice(['json', 'table']), 
-              default='table', help='Output format')
+@click.option('--format', '-f', shell_complete=get_output_formats, default='table', help='Output format')
 @click.option('--use-tradeable', is_flag=True, 
               help='Use only tradeable symbols from enhanced analysis')
 @click.option('--budget', type=float, default=50.0, help='Budget for tradeable symbols filter')
@@ -473,9 +522,9 @@ def trading_analyze(ctx, symbols, timeframe, limit, top, strategies, min_confide
 
 
 @trading.command('signals')
-@click.option('--type', '-t', type=click.Choice(['buy', 'sell', 'all']), default='all',
+@click.option('--type', '-t', shell_complete=get_signal_types, default='all',
               help='Filter signals by type')
-@click.option('--strategy', '-s', type=click.Choice(['rsi', 'macd', 'all']), default='all',
+@click.option('--strategy', '-s', shell_complete=get_strategies, default='all',
               help='Filter signals by strategy')
 @click.option('--min-confidence', type=float, default=0.0,
               help='Minimum confidence threshold')
@@ -639,7 +688,7 @@ def config(ctx):
 
 
 @config.command('show')
-@click.option('--section', '-s', help='Show specific section only')
+@click.option('--section', '-s', shell_complete=get_config_sections, help='Show specific section only')
 @click.pass_context
 def config_show(ctx, section):
     """Show current configuration."""
@@ -884,8 +933,8 @@ def live_start(ctx, symbols, balance, duration, paper):
     Start live trading engine with real-time data.
     
     Examples:
-        ./aug live start --symbols BTC/USDT ETH/USDT --balance 1000 --duration 60
-        ./aug live start --symbols DOGE/USDT --paper
+        aug live start --symbols BTC/USDT ETH/USDT --balance 1000 --duration 60
+        aug live start --symbols DOGE/USDT --paper
     """
     try:
         from .live_trading.live_engine import LiveTradingEngine
@@ -950,7 +999,7 @@ def live_start(ctx, symbols, balance, duration, paper):
 
 
 @live.command('monitor')
-@click.option('--symbols', '-s', multiple=True, help='Symbols to monitor')
+@click.option('--symbols', '-s', multiple=True, shell_complete=get_symbols, help='Symbols to monitor')
 @click.option('--duration', '-d', type=int, default=60, help='Duration in seconds')
 @click.pass_context
 def live_monitor(ctx, symbols, duration):
@@ -958,8 +1007,8 @@ def live_monitor(ctx, symbols, duration):
     Monitor real-time prices for symbols.
     
     Examples:
-        ./aug live monitor --symbols BTC/USDT ETH/USDT --duration 120
-        ./aug live monitor --symbols DOGE/USDT
+        aug live monitor --symbols BTC/USDT ETH/USDT --duration 120
+        aug live monitor --symbols DOGE/USDT
     """
     try:
         from .data_feeder.realtime_feeder import BinanceWebsocketFeeder
@@ -991,6 +1040,7 @@ def live_monitor(ctx, symbols, duration):
         
         # Stop the feeder immediately to prevent more callbacks
         feeder.stop()
+        feeder.cleanup()
         
         # Show final status
         status = feeder.get_connection_status()
@@ -1014,7 +1064,7 @@ def live_test(ctx):
     Test live trading components.
     
     Examples:
-        ./aug live test
+        aug live test
     """
     click.echo("🧪 Testing Live Trading Components...")
     
@@ -1050,6 +1100,7 @@ def live_test(ctx):
         
         # Stop the feeder immediately to prevent more callbacks
         feeder.stop()
+        feeder.cleanup()
         
         status = feeder.get_connection_status()
         if status['connected'] and status['symbols']['BTCUSDT']['current_price'] > 0:

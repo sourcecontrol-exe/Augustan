@@ -81,6 +81,7 @@ def test_realtime_feeder():
     
     # Stop the feeder immediately to prevent more callbacks
     feeder.stop()
+    feeder.cleanup()
     
     # Check connection status
     status = feeder.get_connection_status()
@@ -128,6 +129,7 @@ def test_live_trading_engine():
     
     # Stop the engine immediately to prevent more processing
     engine.stop()
+    # Note: engine.stop() should handle feeder cleanup internally
     
     # Get engine status
     status = engine.get_engine_status()

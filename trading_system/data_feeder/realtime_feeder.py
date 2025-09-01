@@ -122,6 +122,7 @@ class BinanceWebsocketFeeder:
         # Threading
         self.ws_thread = None
         self.data_lock = threading.Lock()
+        self._cleanup_timers = []  # Track cleanup timers
         
         # Initialize market data containers
         for symbol in self.symbols:
@@ -249,7 +250,9 @@ class BinanceWebsocketFeeder:
         if self.is_running and self.reconnect_attempts < self.max_reconnect_attempts:
             self.reconnect_attempts += 1
             logger.info(f"Attempting reconnection #{self.reconnect_attempts} in {self.reconnect_delay}s...")
-            threading.Timer(self.reconnect_delay, self._reconnect).start()
+            timer = threading.Timer(self.reconnect_delay, self._reconnect)
+            self._cleanup_timers.append(timer)
+            timer.start()
     
     def _on_open(self, ws):
         """Handle WebSocket open."""
@@ -296,13 +299,34 @@ class BinanceWebsocketFeeder:
         """Stop the WebSocket connection."""
         self.is_running = False
         
+        # Cancel any pending reconnection timers
+        for timer in self._cleanup_timers:
+            if timer.is_alive():
+                timer.cancel()
+        self._cleanup_timers.clear()
+        
+        # Clear any pending reconnection attempts
+        self.reconnect_attempts = self.max_reconnect_attempts + 1
+        
+        # Close WebSocket connection
         if self.ws:
             self.ws.close()
         
+        # Wait for WebSocket thread to finish
         if self.ws_thread and self.ws_thread.is_alive():
             self.ws_thread.join(timeout=5)
+            if self.ws_thread.is_alive():
+                logger.warning("WebSocket thread did not stop within timeout")
         
         logger.info("WebSocket feeder stopped")
+    
+    def cleanup(self):
+        """Clean up resources and ensure all threads are terminated."""
+        self.stop()
+        
+        # Additional cleanup if needed
+        self.callbacks.clear()
+        self.market_data.clear()
     
     def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol."""
