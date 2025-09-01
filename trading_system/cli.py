@@ -12,34 +12,32 @@ from datetime import datetime
 from typing import List, Optional
 import os
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
-
-from src.jobs.daily_volume_job import DailyVolumeJob
-from src.jobs.enhanced_volume_job import EnhancedVolumeJob
-from src.data_feeder.futures_data_feeder import FuturesDataFeeder
-from src.core.position_sizing import RiskManagementConfig
-from futures_main import FuturesTradingSystem
+from .jobs.daily_volume_job import DailyVolumeJob
+from .jobs.enhanced_volume_job import EnhancedVolumeJob
+from .data_feeder.futures_data_feeder import FuturesDataFeeder
+from .core.position_sizing import RiskManagementConfig
 
 
 @click.group()
-@click.version_option(version="1.0.0", prog_name="Futures Trading CLI")
+@click.version_option(version="1.0.0", prog_name="Augustan Trading CLI")
 @click.option('--config', '-c', default='config/exchanges_config.json', 
               help='Path to configuration file')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
 @click.pass_context
 def cli(ctx, config, verbose):
     """
-    🚀 Futures Trading System CLI
+    🚀 Augustan Trading System CLI
     
-    A comprehensive tool for cryptocurrency futures trading with volume analysis,
-    multi-exchange support, and automated signal generation.
+    The ultimate futures trading and position sizing tool with volume analysis,
+    multi-exchange support, and intelligent risk management.
     
     Examples:
-        futures-cli volume analyze                    # Run volume analysis
-        futures-cli trading analyze --timeframe 4h   # Generate trading signals
-        futures-cli job start --schedule             # Start daily job
-        futures-cli config show                      # Show configuration
+        ./aug volume analyze --enhanced               # Enhanced volume analysis with position sizing
+        ./aug position analyze --symbol DOGE/USDT    # Analyze position sizing for DOGE
+        ./aug position tradeable --budget 50          # Find tradeable symbols for $50 budget
+        ./aug trading analyze --timeframe 4h          # Generate trading signals
+        ./aug job start --schedule                    # Start daily job
+        ./aug config show                             # Show configuration
     """
     ctx.ensure_object(dict)
     ctx.obj['config'] = config
@@ -83,10 +81,10 @@ def volume_analyze(ctx, exchanges, min_volume, max_rank, output, format, save, e
     symbols that fit within your budget and risk parameters.
     
     Examples:
-        futures-cli volume analyze
-        futures-cli volume analyze --enhanced --budget 100 --risk-percent 0.5
-        futures-cli volume analyze --exchanges bybit --min-volume 5000000
-        futures-cli volume analyze --format json --output my_analysis.json
+        ./aug volume analyze
+        ./aug volume analyze --enhanced --budget 100 --risk-percent 0.5
+        ./aug volume analyze --exchanges bybit --min-volume 5000000
+        ./aug volume analyze --format json --output my_analysis.json
     """
     if enhanced:
         click.echo("🔍 Starting enhanced futures volume analysis with position sizing...")
@@ -224,18 +222,18 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
     Analyze position sizing for a specific symbol.
     
     Examples:
-        futures-cli position analyze --symbol BTC/USDT --budget 100
-        futures-cli position analyze --symbol ETH/USDT --risk-percent 0.5 --leverage 10
+        ./aug position analyze --symbol BTC/USDT --budget 100
+        ./aug position analyze --symbol ETH/USDT --risk-percent 0.5 --leverage 10
     """
     click.echo(f"💰 Analyzing position sizing for {symbol}...")
     
     try:
-        from src.data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
-        from src.core.position_sizing import (
+        from .data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
+        from .core.position_sizing import (
             PositionSizingCalculator, PositionSizingInput, 
             RiskManagementConfig, PositionSide
         )
-        from src.core.futures_models import ExchangeType
+        from .core.futures_models import ExchangeType
         
         # Initialize components
         risk_config = RiskManagementConfig(
@@ -321,8 +319,8 @@ def position_tradeable(ctx, budget, risk_percent, limit):
     Show tradeable symbols based on position sizing analysis.
     
     Examples:
-        futures-cli position tradeable --budget 100 --limit 30
-        futures-cli position tradeable --risk-percent 0.5
+        ./aug position tradeable --budget 100 --limit 30
+        ./aug position tradeable --risk-percent 0.5
     """
     click.echo(f"💰 Finding tradeable symbols for ${budget} budget...")
     
@@ -340,7 +338,7 @@ def position_tradeable(ctx, budget, risk_percent, limit):
         
         if not tradeable_symbols:
             click.echo("❌ No tradeable symbols found. Try running enhanced analysis first:", err=True)
-            click.echo("   futures-cli volume analyze --enhanced")
+            click.echo("   ./aug volume analyze --enhanced")
             sys.exit(1)
         
         click.echo(f"\n🎯 Top {len(tradeable_symbols)} Tradeable Symbols")
@@ -403,8 +401,9 @@ def trading_analyze(ctx, symbols, timeframe, limit, top, strategies, min_confide
     click.echo("📈 Starting futures trading analysis...")
     
     try:
-        # Initialize trading system
-        system = FuturesTradingSystem(config_path=ctx.obj['config'])
+        # Initialize data feeder
+        from .data_feeder.futures_data_feeder import FuturesDataFeeder
+        system = FuturesDataFeeder()
         
         # Convert symbols if provided
         if symbols:

@@ -3,13 +3,13 @@
 Test script for position sizing and risk management functionality.
 """
 
-from src.core.position_sizing import (
+from trading_system.core.position_sizing import (
     PositionSizingCalculator, PositionSizingInput, RiskManagementConfig,
     ExchangeLimits, PositionSide
 )
-from src.data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
-from src.jobs.enhanced_volume_job import EnhancedVolumeJob
-from src.core.futures_models import ExchangeType
+from trading_system.data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
+from trading_system.jobs.enhanced_volume_job import EnhancedVolumeJob
+from trading_system.core.futures_models import ExchangeType
 
 
 def test_position_sizing_calculator():
@@ -124,7 +124,7 @@ def test_enhanced_volume_job():
             return True
         except:
             print(f"   ⚠️  No cached analysis found (run enhanced analysis first)")
-            print(f"   To test: python3 cli.py volume analyze --enhanced")
+            print(f"   To test: python3 -m trading_system volume analyze --enhanced")
             return False
             
     except Exception as e:
@@ -163,9 +163,13 @@ def main():
         print("⚠️  Some tests failed or skipped")
     
     print(f"\n💡 To test the full system:")
-    print("   python3 cli.py volume analyze --enhanced --budget 50")
-    print("   python3 cli.py position tradeable --budget 50")
-    print("   python3 cli.py position analyze --symbol BTC/USDT --budget 50")
+    print("   python3 -m trading_system volume analyze --enhanced --budget 50")
+    print("   python3 -m trading_system position tradeable --budget 50") 
+    print("   python3 -m trading_system position analyze --symbol BTC/USDT --budget 50")
+    print("   # Or use the local command:")
+    print("   aug volume analyze --enhanced --budget 50")
+    print("   aug position tradeable --budget 50")
+    print("   aug position analyze --symbol BTC/USDT --budget 50")
 
 
 if __name__ == "__main__":

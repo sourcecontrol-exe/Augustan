@@ -1,334 +1,291 @@
-# Augustan: Futures Trading System
+# 🚀 Augustan Trading System
 
-A comprehensive cryptocurrency futures trading system optimized for high-volume markets with automated volume analysis, multi-exchange support, and intelligent market selection.
+The ultimate futures trading and position sizing tool with intelligent risk management, multi-exchange support, and automated signal generation.
 
-## 🚀 System Overview
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Augustan is designed as a futures-optimized trading system with three main components:
+## ✨ Key Features
 
-**Layer 1 (Volume Analysis)**: Daily analysis of futures markets across 5 major exchanges to identify high-liquidity trading opportunities.
+### 💰 **Intelligent Position Sizing**
+- **Budget-Based Filtering**: Only shows symbols you can actually afford to trade
+- **Risk-Based Calculation**: Positions sized based on your risk tolerance (e.g., 0.2% per trade)
+- **Exchange Limits Compliance**: Respects minimum notional values and position sizes
+- **Liquidation Safety**: Ensures sufficient buffer against liquidation (1.5x+ safety ratio)
 
-**Layer 2 (Strategy Engine)**: Executes RSI and MACD strategies on volume-selected markets with confidence scoring.
+### 📊 **Multi-Exchange Volume Analysis**
+- **5 Major Exchanges**: Binance, Bybit, OKX, Bitget, Gate.io
+- **Real-Time Data**: Live volume metrics and market rankings
+- **Smart Filtering**: Volume-based market selection with customizable thresholds
+- **Enhanced Analysis**: Combines volume data with position sizing for optimal symbol selection
 
-**Layer 3 (CLI Interface)**: Professional command-line interface for easy system operation and monitoring.
+### 📈 **Advanced Trading Signals**
+- **RSI Strategy**: Relative Strength Index with customizable parameters
+- **MACD Strategy**: Moving Average Convergence Divergence signals
+- **Multi-Timeframe**: 1m, 5m, 1h, 4h, 1d analysis
+- **Confidence Scoring**: Signal strength assessment for better decision making
 
-This architecture ensures you only trade the most liquid futures markets while maintaining professional-grade tooling for analysis and execution.
+### 🤖 **Automated Job System**
+- **Daily Volume Jobs**: Automated daily market analysis
+- **Scheduled Execution**: Set and forget automation
+- **Performance Tracking**: Historical analysis and performance metrics
+- **Alert System**: Notifications for significant market changes
 
-## ✨ Core Features
+## 🛠️ Installation
 
-| Module | Description |
-|--------|-------------|
-| 📊 **Multi-Exchange Volume Analysis** | Analyzes futures markets across Binance, Bybit, OKX, Bitget, and Gate.io |
-| 🤖 **Futures-Optimized Strategies** | RSI and MACD strategies adapted for futures volatility patterns |
-| ⚙️ **Intelligent Market Selection** | Automatically selects top liquid markets (>$1M daily volume) |
-| 🎯 **Signal Management** | Generates BUY/SELL signals with confidence scoring (60-90%) |
-| 🛡️ **Volume-Based Risk Control** | Only trades high-liquidity markets to minimize slippage risk |
-| 📤 **CLI Interface** | Professional command-line tools for all operations |
-| 📈 **Daily Volume Jobs** | Automated daily analysis with 30-day data retention |
-| 📊 **Live Dashboard** | Real-time market overview with auto-refresh capabilities |
-| ⏰ **Automated Scheduler** | Runs daily volume analysis jobs at configurable times |
-| 🔧 **Production Ready** | Systemd service support for server deployment |
-## 🏗️ Project Architecture
-
-```
-augustan/
-├── 📂 src/
-│   ├── 📂 core/                 # Data models (MarketData, TradingSignal, FuturesModels)
-│   ├── 📂 data_feeder/          # Multi-exchange data fetching (Binance, Bybit, etc.)
-│   ├── 📂 strategy_engine/      # RSI and MACD strategies with base framework
-│   ├── 📂 jobs/                 # Daily volume analysis and scheduling jobs
-│   └── 📂 (future modules)/     # Market features, ML models, signal management
-├── 📂 config/                   # Exchange configurations and API keys
-├── 📂 volume_data/              # Daily volume analysis results (JSON)
-├── 📂 logs/                     # Structured application logs
-├── 📂 deployment/               # Production deployment files (systemd)
-├── 🐍 futures_main.py           # Futures trading system entry point
-├── 🐍 cli.py                    # Comprehensive CLI interface
-├── 🐍 main.py                   # Original spot trading system
-└── 📋 requirements.txt          # Python dependencies (ccxt, pandas, ta, click)
-```
-## 🔧 Installation & Setup
-
-### 1. Prerequisites
-- **Python 3.9+** (tested with Python 3.9.6)
-- **pip** and **virtualenv** (recommended)
-
-### 2. Quick Setup
+### Quick Install (Recommended)
 ```bash
-# Clone the repository
-git clone <your-repo-url>
+pip install -e .
+```
+
+After installation, the `aug` command will be available globally:
+```bash
+aug --help
+```
+
+### Development Install
+```bash
+git clone https://github.com/augustan-trading/augustan.git
 cd augustan
-
-# One-command setup (recommended)
-./setup_cli.sh
+pip install -e .
 ```
 
-### 3. Manual Installation
+### Requirements
+- Python 3.8+
+- Internet connection for exchange APIs
+- 50+ MB free disk space
+
+## 🚀 Quick Start
+
+### 1. **Find Tradeable Symbols for Your Budget**
 ```bash
-# Create virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# OR
-venv\Scripts\activate     # Windows
+aug position tradeable --budget 50
+```
+**Result**: List of symbols you can safely trade with $50.
 
-# Install dependencies
-pip3 install -r requirements.txt
+### 2. **Analyze Specific Symbol Position Sizing**
+```bash
+aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+```
+**Result**: Detailed position sizing analysis with safety metrics.
 
-# Initialize configuration
-python3 cli.py config init
+### 3. **Enhanced Volume Analysis with Position Sizing**
+```bash
+aug volume analyze --enhanced --budget 50 --risk-percent 0.2
+```
+**Result**: Volume analysis + position sizing for top symbols.
+
+### 4. **Generate Trading Signals for Affordable Symbols**
+```bash
+aug trading analyze --use-tradeable --budget 50
+```
+**Result**: RSI/MACD signals only for symbols within your budget.
+
+## 📊 **Real Example Output**
+
+```bash
+$ aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+
+📊 Position Sizing Analysis for DOGE/USDT
+============================================================
+Current Price: $0.2108
+Stop Loss: $0.2066 (-2.0%)
+Budget: $50.00 USDT
+Risk per Trade: 0.5%
+Leverage: 5x
+
+✅ TRADEABLE
+Position Size: 59.297913 DOGE
+Position Value: $12.50
+Required Margin: $2.50
+Risk Amount: $0.25
+Liquidation Price: $0.1695
+Safety Ratio: 9.80x
+============================================================
 ```
 
-### 4. Configuration
-Edit `config/exchanges_config.json` with your exchange API keys:
+## 🎯 **Core Commands**
 
+### **Position Sizing**
+```bash
+# Analyze specific symbol
+aug position analyze --symbol BTC/USDT --budget 100
+
+# Find tradeable symbols
+aug position tradeable --budget 50 --limit 20
+
+# Custom risk settings
+aug position analyze --symbol ETH/USDT --budget 200 --risk-percent 1.0 --leverage 10
+```
+
+### **Volume Analysis**
+```bash
+# Basic volume analysis
+aug volume analyze
+
+# Enhanced with position sizing
+aug volume analyze --enhanced --budget 50 --risk-percent 0.2
+
+# Specific exchanges
+aug volume analyze --exchanges bybit --min-volume 5000000
+```
+
+### **Trading Signals**
+```bash
+# Generate signals for top volume symbols
+aug trading analyze
+
+# Use only tradeable symbols
+aug trading analyze --use-tradeable --budget 50
+
+# Custom timeframe and strategies
+aug trading analyze --timeframe 1h --strategies rsi macd
+```
+
+### **Job Management**
+```bash
+# Start daily volume job
+aug job start --schedule
+
+# Run job once
+aug job run
+
+# Check job status
+aug job status
+```
+
+### **Configuration**
+```bash
+# Show current config
+aug config show
+
+# Validate config
+aug config validate
+```
+
+## ⚙️ **Configuration**
+
+Create `config/exchanges_config.json`:
 ```json
 {
-  "binance": {
-    "api_key": "YOUR_BINANCE_API_KEY",
-    "secret": "YOUR_BINANCE_SECRET",
-    "enabled": true,
-    "testnet": false
-  },
-  "bybit": {
-    "api_key": "YOUR_BYBIT_API_KEY", 
-    "secret": "YOUR_BYBIT_SECRET",
-    "enabled": true,
-    "testnet": false
-  },
-  "volume_settings": {
-    "min_volume_usd_24h": 1000000,
-    "min_volume_rank": 200
-  }
+    "exchanges": {
+        "binance": {"enabled": true},
+        "bybit": {"enabled": true},
+        "okx": {"enabled": true},
+        "bitget": {"enabled": true},
+        "gate": {"enabled": true}
+    },
+    "volume_analysis": {
+        "min_volume_usd_24h": 1000000,
+        "min_volume_rank": 200,
+        "min_price_change_24h": -50,
+        "max_price_change_24h": 500
+    },
+    "risk_management": {
+        "max_budget": 50.0,
+        "max_risk_per_trade": 0.002,
+        "min_safety_ratio": 1.5,
+        "default_leverage": 5
+    }
 }
 ```
 
-⚠️ **Security**: Never commit real API keys to version control! The system works without API keys for volume analysis.
+## 🔧 **Advanced Usage**
 
-## 🚀 Usage
+### **Position Sizing System**
 
-### CLI Interface (Recommended)
-The system provides a comprehensive CLI for all operations:
+The position sizing system implements sophisticated risk management:
 
-```bash
-# Run volume analysis across all exchanges
-python3 cli.py volume analyze
+1. **Budget Filtering**: `min_feasible_notional = max(exchange_min_notional, min_qty * current_price)`
+2. **Risk Calculation**: `position_size = risk_amount / (entry_price - stop_loss_price)`  
+3. **Liquidation Safety**: `safety_ratio = liquidation_buffer / risk_buffer` (minimum 1.5x)
+4. **Exchange Compliance**: All positions respect exchange minimum requirements
 
-# Generate trading signals for top markets
-python3 cli.py trading analyze --timeframe 4h
+### **Safety Guidelines**
 
-# Show latest signals
-python3 cli.py trading signals --type buy --min-confidence 0.7
+- **Never risk more than 2% per trade**
+- **Maintain 1.5x+ safety ratio** (liquidation protection)
+- **Start with small budgets** ($25-50) and conservative risk (0.2-0.5%)
+- **Use stop-losses religiously**
+- **Test with paper trading first**
 
-# Start daily scheduled job
-python3 cli.py job start --schedule
+## 📈 **Performance Examples**
 
-# Live dashboard
-python3 cli.py dashboard --refresh 30
-```
+**Expected Results for Different Budgets:**
+- **$50 Budget**: ~5-10 tradeable symbols from top 50 volume markets
+- **$200 Budget**: ~15-25 tradeable symbols from top 50 volume markets  
+- **$500 Budget**: ~30-40 tradeable symbols from top 50 volume markets
 
-### Direct Python Usage
+**Live Performance Metrics:**
+- ✅ **Real-time Analysis**: Position sizing calculated in seconds
+- ✅ **Exchange Integration**: Fetches live limits from major exchanges
+- ✅ **Safety Validation**: Proper liquidation risk assessment
+- ✅ **Budget Compliance**: Accurate affordability filtering
 
-**Volume Analysis:**
-```bash
-python3 futures_main.py --volume-analysis
-```
-
-**Trading Analysis:**
-```bash
-python3 futures_main.py --trading-analysis --timeframe 4h
-```
-
-**Complete Analysis:**
-```bash
-python3 futures_main.py  # Runs both volume and trading analysis
-```
-
-**Daily Job Scheduler:**
-```bash
-python3 futures_main.py --daily-job
-```
-
-## 🔌 Exchange Support
-
-The system supports **5 major futures exchanges**:
-- **Binance** (Primary, most tested)
-- **Bybit** (Excellent volume data)
-- **OKX** (Good liquidity)
-- **Bitget** (Growing market)
-- **Gate.io** (Wide selection)
-
-### API Configuration
-1. **Create API Keys**: Generate read-only API keys on your exchange
-2. **Add to Config**: Edit `config/exchanges_config.json` 
-3. **Test First**: System works without API keys for volume analysis
-
-### Volume Analysis (No API Required)
-The system can analyze market volumes without API keys using public endpoints.
-
-## 📈 Strategy Development
-
-### Using Built-in Strategies
-```python
-from src.strategy_engine import RSIStrategy, MACDStrategy
-
-# RSI Strategy with custom parameters
-rsi_strategy = RSIStrategy(
-    period=14,
-    overbought=70,
-    oversold=30
-)
-
-# MACD Strategy
-macd_strategy = MACDStrategy(
-    fast_period=12,
-    slow_period=26,
-    signal_period=9
-)
-```
-
-### Creating Custom Strategies
-Extend the `BaseStrategy` class:
+## 🐍 **Python API Usage**
 
 ```python
-from src.strategy_engine.base_strategy import BaseStrategy
-from src.core.models import TradingSignal, SignalType, StrategyType
+from trading_system import PositionSizingCalculator, RiskManagementConfig, ExchangeLimitsFetcher
 
-class MyCustomStrategy(BaseStrategy):
-    def __init__(self):
-        super().__init__(StrategyType.CUSTOM)
-        
-    def generate_signals(self, market_data):
-        # Your custom logic here
-        signals = []
-        
-        # Example: Simple price-based logic
-        latest_price = market_data[-1].close
-        if your_buy_condition(latest_price):
-            signal = TradingSignal(
-                symbol=market_data[0].symbol,
-                strategy=self.strategy_type,
-                signal_type=SignalType.BUY,
-                confidence=0.75,
-                price=latest_price,
-                timestamp=market_data[-1].timestamp
-            )
-            signals.append(signal)
-            
-        return signals
+# Initialize components
+risk_config = RiskManagementConfig(max_budget=50.0, max_risk_per_trade=0.002)
+calculator = PositionSizingCalculator(risk_config)
+limits_fetcher = ExchangeLimitsFetcher()
+
+# Analyze position sizing
+limits = limits_fetcher.fetch_symbol_limits("binance", "DOGE/USDT")
+result = calculator.analyze_position_sizing(inputs)
+
+print(f"Tradeable: {result.is_tradeable}")
+print(f"Safety Ratio: {result.safety_ratio:.2f}x")
 ```
-## 📊 Output & Monitoring
 
-The system provides comprehensive monitoring and output options:
+## 🔬 **Development**
 
-### Real-time Feedback
-- **Console Output**: Formatted tables with market data and signals
-- **Progress Bars**: Visual feedback for long-running operations
-- **Color-coded Signals**: 🟢 BUY, 🔴 SELL indicators
-
-### File Outputs
-- **JSON Reports**: Structured data in `volume_data/` and signal files
-- **Log Files**: Detailed logs in `logs/futures_trading_system.log`
-- **Configuration**: All settings saved in `config/exchanges_config.json`
-
-### Live Dashboard
+### **Setup Development Environment**
 ```bash
-python3 cli.py dashboard --refresh 30
-```
-Shows:
-- Current market volume statistics
-- Latest trading signals with confidence scores
-- Top recommended markets
-- System status and last run times
-
-### Sample Outputs
-
-**Volume Analysis:**
-```
-🏆 Top 5 Markets by Volume
-================================================================================
- 1. ETH/USDT:USDT        | BYBIT    | $7,507,053,058 | Score:  80.5
- 2. BTC/USDT:USDT        | BYBIT    | $7,497,283,725 | Score:  80.0
+git clone https://github.com/augustan-trading/augustan.git
+cd augustan
+pip install -e ".[dev]"
 ```
 
-**Trading Signals:**
-```
-🎯 Latest Trading Signals (5 found)
-==========================================================================================
-🟢 BTC/USDT:USDT   | MACD | BUY  | $108656.9000 | 70.0% | 2025-08-31T09:30:00
-🔴 ETH/USDT:USDT   | RSI  | SELL | $4830.3700   | 78.0% | 2025-08-23T01:30:00
-```
-
-## 🚀 Quick Demo
-
-Try the interactive demo to see all features:
+### **Run Tests**
 ```bash
-python3 demo_cli.py
+python -m pytest tests/
 ```
 
-Or run individual commands:
+### **Code Formatting**
 ```bash
-# Quick start
-./setup_cli.sh
-python3 cli.py volume analyze
-python3 cli.py trading analyze --timeframe 4h
-python3 cli.py dashboard
+black augustan/
+flake8 augustan/
+mypy augustan/
 ```
 
-## 📚 Documentation
+## 🤝 **Contributing**
 
-- **`CLI_GUIDE.md`**: Comprehensive CLI documentation with all commands
-- **`README_FUTURES.md`**: Detailed system architecture and features  
-- **`CLI_SUMMARY.md`**: Implementation summary and examples
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 🤝 Contributing
+## 📄 **License**
 
-Contributions are welcome! Please:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-1. **Fork the Project**
-2. **Create Feature Branch**: `git checkout -b feature/AmazingFeature`
-3. **Commit Changes**: `git commit -m 'Add AmazingFeature'`
-4. **Push to Branch**: `git push origin feature/AmazingFeature`
-5. **Open Pull Request**
+## 🆘 **Support**
 
-### Development Areas
-- Additional trading strategies (Bollinger Bands, Stochastic, etc.)
-- More exchanges (Kraken, Huobi, etc.)
-- ML model for strategy selection
-- Backtesting framework
-- Web dashboard interface
+- **Documentation**: This README and built-in help (`aug --help`)
+- **Issues**: [GitHub Issues](https://github.com/augustan-trading/augustan/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/augustan-trading/augustan/discussions)
 
-## ⚠️ Disclaimer
+## ⚠️ **Disclaimer**
 
-**This software is for educational and research purposes only.**
-
-- Cryptocurrency futures trading carries **significant risk of loss**
-- Past performance does not indicate future results
-- Always test thoroughly before using real capital
-- You are solely responsible for trading decisions
-- Start with small amounts and paper trading
-
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙋‍♂️ Support
-
-For help and support:
-
-- **📖 Documentation**: Check `CLI_GUIDE.md` for detailed usage
-- **🐛 Issues**: Create GitHub issues with detailed logs
-- **💡 Features**: Submit feature requests with use cases
-- **❓ Questions**: Use `--help` with any CLI command
-
-## 🎯 Performance Metrics
-
-**Live Test Results:**
-- ✅ Analyzed **351 futures markets** across 5 exchanges
-- ✅ Generated **49 recommended markets** for trading  
-- ✅ **$26.4B** total daily volume processed
-- ✅ Signal generation in **<30 seconds**
-- ✅ **Professional CLI** with 15+ commands
+This software is for educational and research purposes only. Trading cryptocurrencies involves substantial risk and may not be suitable for all investors. Past performance is not indicative of future results. Always do your own research and consider your risk tolerance before trading.
 
 ---
 
-**Happy Futures Trading!** 🚀📈
+**Built with ❤️ for the crypto trading community**
+
+*Start trading smarter, not harder with Augustan!* 🚀📈💰
