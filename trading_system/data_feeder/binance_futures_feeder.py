@@ -1,5 +1,5 @@
 """
-Binance Data Feeder - Fetches market data from Binance API.
+Binance Futures Data Feeder - Fetches futures market data from Binance API.
 """
 import ccxt
 import pandas as pd
@@ -10,26 +10,31 @@ from loguru import logger
 from ..core.models import MarketData
 
 
-class BinanceDataFeeder:
-    """Fetches market data from Binance exchange."""
+class BinanceFuturesFeeder:
+    """Fetches futures market data from Binance exchange."""
     
     def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None, testnet: bool = False, config_path: Optional[str] = None):
-        """Initialize Binance data feeder."""
+        """Initialize Binance futures data feeder."""
         # If no API key provided, try to get from config
         if api_key is None or api_secret is None:
-            api_key, api_secret = self._get_spot_credentials(config_path)
+            api_key, api_secret = self._get_futures_credentials(config_path)
         
-        # Configure exchange for spot testnet
+        # Configure exchange for futures testnet
         if testnet:
             self.exchange = ccxt.binance({
                 'apiKey': api_key,
                 'secret': api_secret,
                 'sandbox': True,
                 'test': True,
+                'options': {
+                    'defaultType': 'future',  # Use futures API
+                },
                 'urls': {
                     'api': {
-                        'public': 'https://testnet.binance.vision/api/v3',
-                        'private': 'https://testnet.binance.vision/api/v3',
+                        'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                        'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+                        'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
+                        'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
                     }
                 },
                 'rateLimit': 1200,
@@ -40,51 +45,54 @@ class BinanceDataFeeder:
                 'apiKey': api_key,
                 'secret': api_secret,
                 'sandbox': False,
+                'options': {
+                    'defaultType': 'future',  # Use futures API
+                },
                 'rateLimit': 1200,
                 'enableRateLimit': True,
             })
         
-        # Default symbols to trade
+        # Default futures symbols to trade
         self.default_symbols = [
-            'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'ADA/USDT', 
-            'SOL/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT'
+            'BTC/USDT:USDT', 'ETH/USDT:USDT', 'BNB/USDT:USDT', 'ADA/USDT:USDT', 
+            'SOL/USDT:USDT', 'XRP/USDT:USDT', 'DOT/USDT:USDT', 'AVAX/USDT:USDT'
         ]
         
-        logger.info("BinanceDataFeeder initialized")
+        logger.info("BinanceFuturesFeeder initialized")
     
-    def _get_spot_credentials(self, config_path: Optional[str] = None) -> tuple[str, str]:
-        """Get spot API credentials from configuration."""
+    def _get_futures_credentials(self, config_path: Optional[str] = None) -> tuple[str, str]:
+        """Get futures API credentials from configuration."""
         try:
             from ..core.config_manager import get_config_manager
             config_manager = get_config_manager(config_path)
             binance_config = config_manager.get_exchange_config('binance')
             
             # Check for new structure with spot/futures separation
-            if 'spot' in binance_config:
-                spot_config = binance_config['spot']
-                return spot_config.get('api_key'), spot_config.get('secret')
+            if 'futures' in binance_config:
+                futures_config = binance_config['futures']
+                return futures_config.get('api_key'), futures_config.get('secret')
             else:
                 # Fallback to old structure
                 return binance_config.get('api_key'), binance_config.get('secret')
         except Exception as e:
-            logger.error(f"Failed to get spot credentials: {e}")
+            logger.error(f"Failed to get futures credentials: {e}")
             return None, None
     
     def get_symbols(self) -> List[str]:
-        """Get available trading symbols."""
+        """Get available futures trading symbols."""
         try:
             markets = self.exchange.load_markets()
-            return [symbol for symbol in markets.keys() if '/USDT' in symbol]
+            return [symbol for symbol in markets.keys() if ':USDT' in symbol]
         except Exception as e:
-            logger.error(f"Error fetching symbols: {e}")
+            logger.error(f"Error fetching futures symbols: {e}")
             return self.default_symbols
     
     def fetch_ohlcv(self, symbol: str, timeframe: str = '1m', limit: int = 100) -> List[MarketData]:
         """
-        Fetch OHLCV data for a symbol.
+        Fetch OHLCV data for a futures symbol.
         
         Args:
-            symbol: Trading pair symbol (e.g., 'BTC/USDT')
+            symbol: Trading pair symbol (e.g., 'BTC/USDT:USDT')
             timeframe: Timeframe ('1m', '5m', '1h', '1d')
             limit: Number of candles to fetch
             
@@ -108,17 +116,17 @@ class BinanceDataFeeder:
                 )
                 market_data.append(data)
             
-            logger.info(f"Fetched {len(market_data)} candles for {symbol}")
+            logger.info(f"Fetched {len(market_data)} futures candles for {symbol}")
             return market_data
             
         except Exception as e:
-            logger.error(f"Error fetching OHLCV for {symbol}: {e}")
+            logger.error(f"Error fetching futures OHLCV for {symbol}: {e}")
             return []
     
     def fetch_multiple_symbols(self, symbols: Optional[List[str]] = None, 
                              timeframe: str = '1m', limit: int = 100) -> Dict[str, List[MarketData]]:
         """
-        Fetch OHLCV data for multiple symbols.
+        Fetch OHLCV data for multiple futures symbols.
         
         Args:
             symbols: List of symbols to fetch (uses default if None)
@@ -137,20 +145,20 @@ class BinanceDataFeeder:
             if data:
                 all_data[symbol] = data
         
-        logger.info(f"Fetched data for {len(all_data)} symbols")
+        logger.info(f"Fetched futures data for {len(all_data)} symbols")
         return all_data
     
     def get_current_price(self, symbol: str) -> Optional[float]:
-        """Get current price for a symbol."""
+        """Get current price for a futures symbol."""
         try:
             ticker = self.exchange.fetch_ticker(symbol)
             return float(ticker['last'])
         except Exception as e:
-            logger.error(f"Error fetching current price for {symbol}: {e}")
+            logger.error(f"Error fetching current futures price for {symbol}: {e}")
             return None
     
     def get_current_prices(self, symbols: Optional[List[str]] = None) -> Dict[str, float]:
-        """Get current prices for multiple symbols."""
+        """Get current prices for multiple futures symbols."""
         if symbols is None:
             symbols = self.default_symbols
         
@@ -161,6 +169,28 @@ class BinanceDataFeeder:
                 prices[symbol] = price
         
         return prices
+    
+    def get_account_info(self) -> Optional[Dict]:
+        """Get futures account information including balances."""
+        try:
+            if not self.exchange.apiKey or not self.exchange.secret:
+                logger.warning("API credentials not configured for futures account info")
+                return None
+            
+            account_info = self.exchange.fetch_balance()
+            return account_info
+        except Exception as e:
+            logger.error(f"Error fetching futures account info: {e}")
+            return None
+    
+    def get_positions(self) -> List[Dict]:
+        """Get current futures positions."""
+        try:
+            positions = self.exchange.fetch_positions()
+            return positions
+        except Exception as e:
+            logger.error(f"Error fetching futures positions: {e}")
+            return []
     
     def to_dataframe(self, market_data: List[MarketData]) -> pd.DataFrame:
         """Convert market data to pandas DataFrame."""
@@ -180,16 +210,3 @@ class BinanceDataFeeder:
             df.set_index('timestamp', inplace=True)
         
         return df
-    
-    def get_account_info(self) -> Optional[Dict]:
-        """Get account information including balances."""
-        try:
-            if not self.exchange.apiKey or not self.exchange.secret:
-                logger.warning("API credentials not configured for account info")
-                return None
-            
-            account_info = self.exchange.fetch_balance()
-            return account_info
-        except Exception as e:
-            logger.error(f"Error fetching account info: {e}")
-            return None

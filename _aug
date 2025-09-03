@@ -1,0 +1,269 @@
+#compdef aug
+
+# Zsh completion script for Augustan Trading CLI
+# Place this file in ~/.zsh/completions/ or source it in your .zshrc
+
+_aug() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->cmds' \
+        '*:: :->args'
+
+    case $state in
+        cmds)
+            local commands
+            commands=(
+                'volume:Volume analysis commands'
+                'position:Position sizing and risk management commands'
+                'trading:Trading analysis commands'
+                'job:Job management commands'
+                'live:Live trading with real-time data'
+                'config:Configuration management'
+                'dashboard:Show a live dashboard with market overview'
+                '--help:Show help'
+                '--version:Show version'
+                '--config:Path to configuration file'
+                '--verbose:Enable verbose output'
+            )
+            _describe -t commands 'aug commands' commands
+            ;;
+        args)
+            case $line[1] in
+                volume)
+                    _aug_volume
+                    ;;
+                position)
+                    _aug_position
+                    ;;
+                trading)
+                    _aug_trading
+                    ;;
+                job)
+                    _aug_job
+                    ;;
+                live)
+                    _aug_live
+                    ;;
+                config)
+                    _aug_config
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_volume() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'analyze:Analyze volume data'
+                'top:Show top volume markets'
+            )
+            _describe -t subcommands 'volume subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                analyze)
+                    _arguments \
+                        '--enhanced[Enhanced analysis with position sizing]' \
+                        '--exchanges[Exchanges to analyze]' \
+                        '--min-volume[Minimum volume threshold]' \
+                        '--format[Output format]' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_position() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'analyze:Analyze position sizing for a symbol'
+                'tradeable:Find tradeable symbols for budget'
+            )
+            _describe -t subcommands 'position subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                analyze)
+                    _arguments \
+                        '--symbol[Symbol to analyze]:symbols:_aug_symbols' \
+                        '--budget[Account budget]' \
+                        '--risk[Risk percentage]' \
+                        '--leverage[Leverage to use]' \
+                        '--help[Show help]'
+                    ;;
+                tradeable)
+                    _arguments \
+                        '--budget[Account budget]' \
+                        '--exchanges[Exchanges to check]' \
+                        '--min-volume[Minimum volume]' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_trading() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'analyze:Generate trading signals'
+                'signals:Show recent signals'
+            )
+            _describe -t subcommands 'trading subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                analyze)
+                    _arguments \
+                        '--timeframe[Timeframe for analysis]:timeframes:_aug_timeframes' \
+                        '--symbols[Symbols to analyze]:symbols:_aug_symbols' \
+                        '--strategies[Strategies to use]' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_job() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'start:Start scheduled jobs'
+                'status:Show job status'
+            )
+            _describe -t subcommands 'job subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                start)
+                    _arguments \
+                        '--schedule[Run as scheduled job]' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_live() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'start:Start live trading'
+                'monitor:Monitor positions'
+                'test:Test mode'
+            )
+            _describe -t subcommands 'live subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                start)
+                    _arguments \
+                        '--paper[Paper trading mode]' \
+                        '--symbols[Symbols to trade]:symbols:_aug_symbols' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_aug_config() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1: :->subcmds' \
+        '*:: :->args'
+
+    case $state in
+        subcmds)
+            local subcommands
+            subcommands=(
+                'show:Show current configuration'
+                'init:Initialize configuration'
+            )
+            _describe -t subcommands 'config subcommands' subcommands
+            ;;
+        args)
+            case $line[1] in
+                show)
+                    _arguments \
+                        '--section[Config section to show]' \
+                        '--help[Show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+# Helper functions for completions
+_aug_symbols() {
+    local symbols
+    symbols=(
+        'BTC/USDT' 'ETH/USDT' 'SOL/USDT' 'XRP/USDT' 'DOGE/USDT'
+        'ADA/USDT' 'BNB/USDT' 'AVAX/USDT' 'LINK/USDT' 'UNI/USDT'
+        'DOT/USDT' 'LTC/USDT' 'BCH/USDT' 'XLM/USDT' 'ATOM/USDT'
+        'NEAR/USDT' 'FTM/USDT' 'ALGO/USDT' 'VET/USDT' 'ICP/USDT'
+    )
+    _describe -t symbols 'trading symbols' symbols
+}
+
+_aug_timeframes() {
+    local timeframes
+    timeframes=(
+        '1m' '5m' '15m' '30m' '1h' '4h' '1d' '1w'
+    )
+    _describe -t timeframes 'timeframes' timeframes
+}
+
+# Register the completion function
+compdef _aug aug

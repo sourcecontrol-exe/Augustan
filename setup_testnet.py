@@ -1,117 +1,157 @@
 #!/usr/bin/env python3
 """
-Binance Testnet Configuration Setup
-
-This script helps you configure your Binance testnet API keys
-for the dry-run testing.
+Binance Testnet Setup Script
+Configure your own API tokens for Binance testnet
 """
 
 import json
 import os
+import sys
 from pathlib import Path
 
+def get_user_input(prompt, default=None, password=False):
+    """Get user input with optional default value"""
+    if default:
+        prompt = f"{prompt} (default: {default}): "
+    else:
+        prompt = f"{prompt}: "
+    
+    if password:
+        import getpass
+        value = getpass.getpass(prompt)
+    else:
+        value = input(prompt)
+    
+    return value if value else default
 
-def setup_testnet_config():
-    """Setup Binance testnet configuration."""
-    print("🚀 Binance Testnet Configuration Setup")
-    print("=" * 60)
-    print("This will help you configure your Binance testnet API keys")
-    print("for the dry-run testing.")
-    print("=" * 60)
-    
-    # Check if config file exists
+def update_config_file(api_key, secret_key):
+    """Update the exchanges configuration file with new API keys"""
     config_path = Path("config/exchanges_config.json")
+    
     if not config_path.exists():
-        print("❌ Configuration file not found. Please run 'aug config init' first.")
+        print("❌ Configuration file not found!")
         return False
     
-    # Load current config
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    
-    print("\n📋 Current Binance Configuration:")
-    binance_config = config.get("binance", {})
-    print(f"   Testnet Enabled: {binance_config.get('testnet', False)}")
-    print(f"   API Key: {'✅ Configured' if binance_config.get('api_key') else '❌ Not configured'}")
-    print(f"   Secret: {'✅ Configured' if binance_config.get('secret') else '❌ Not configured'}")
-    
-    # Get testnet API keys
-    print("\n🔑 Enter your Binance Testnet API credentials:")
-    print("(Get them from: https://testnet.binancefuture.com/en/futures/BTCUSDT)")
-    
-    api_key = input("API Key: ").strip()
-    secret = input("Secret Key: ").strip()
-    
-    if not api_key or not secret:
-        print("❌ API key and secret are required.")
-        return False
-    
-    # Update configuration
-    config["binance"] = {
-        "api_key": api_key,
-        "secret": secret,
-        "enabled": True,
-        "testnet": True  # Enable testnet
-    }
-    
-    # Save updated config
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    
-    print("\n✅ Configuration updated successfully!")
-    print("📋 Updated Binance Configuration:")
-    print(f"   Testnet Enabled: {config['binance']['testnet']}")
-    print(f"   API Key: ✅ Configured")
-    print(f"   Secret: ✅ Configured")
-    
-    # Test configuration
-    print("\n🧪 Testing configuration...")
     try:
-        from trading_system.core.config_manager import get_config_manager
-        from trading_system.data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
-        from trading_system.core.futures_models import ExchangeType
+        # Read existing config
+        with open(config_path, 'r') as f:
+            config = json.load(f)
         
-        config_manager = get_config_manager(str(config_path))
-        limits_fetcher = ExchangeLimitsFetcher()
+        # Update Binance configuration
+        if 'binance' not in config:
+            config['binance'] = {}
         
-        # Test connection
-        exchange = limits_fetcher.exchanges.get(ExchangeType.BINANCE)
-        if exchange:
-            try:
-                balance = exchange.fetch_balance()
-                usdt_balance = balance.get('USDT', {}).get('free', 0)
-                print(f"✅ Connection successful! USDT Balance: {usdt_balance}")
+        config['binance'].update({
+            'api_key': api_key,
+            'secret': secret_key,
+            'enabled': True,
+            'testnet': True
+        })
+        
+        # Write updated config
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        print(f"✅ Configuration updated: {config_path}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error updating configuration: {e}")
+        return False
+
+def test_connection(api_key, secret_key):
+    """Test the connection to Binance testnet"""
+    print("\n🔍 Testing connection to Binance testnet...")
+    
+    try:
+        from trading_system.data_feeder.binance_feeder import BinanceDataFeeder
+        
+        # Initialize feeder with testnet settings
+        feeder = BinanceDataFeeder(
+            api_key=api_key,
+            api_secret=secret_key,
+            testnet=True
+        )
+        
+        # Test basic connection
+        print("  Testing API connection...")
+        account_info = feeder.get_account_info()
+        
+        if account_info and 'balances' in account_info:
+            print("✅ API connection successful!")
+            
+            # Show account balance
+            balances = account_info['balances']
+            usdt_balance = next((b for b in balances if b['asset'] == 'USDT'), None)
+            
+            if usdt_balance:
+                free_balance = float(usdt_balance['free'])
+                print(f"💰 USDT Balance: {free_balance:.2f}")
                 
-                if usdt_balance < 100:
-                    print("⚠️ Low testnet balance. Consider adding more USDT for testing.")
-                    print("   You can get testnet USDT from: https://testnet.binancefuture.com/en/futures/BTCUSDT")
-                
-                return True
-                
-            except Exception as e:
-                print(f"❌ Connection failed: {e}")
-                return False
+                if free_balance < 100:
+                    print("⚠️  Low balance warning: Consider adding more testnet USDT")
+                else:
+                    print("✅ Sufficient balance for testing")
+            else:
+                print("⚠️  No USDT balance found")
+            
+            return True
         else:
-            print("❌ Exchange not initialized")
+            print("❌ Failed to get account information")
             return False
             
     except Exception as e:
-        print(f"❌ Configuration test failed: {e}")
+        print(f"❌ Connection test failed: {e}")
         return False
 
-
 def main():
-    """Main function."""
-    success = setup_testnet_config()
+    """Main setup function"""
+    print("🔧 Binance Testnet Setup")
+    print("=" * 40)
     
-    if success:
-        print("\n🎉 Testnet configuration completed successfully!")
-        print("You can now run the dry-run test with:")
-        print("   python3 testnet_dry_run.py")
-    else:
-        print("\n❌ Testnet configuration failed.")
-        print("Please check your API keys and try again.")
-
+    print("\n📋 Prerequisites:")
+    print("1. Visit: https://testnet.binancefuture.com/")
+    print("2. Create a testnet account")
+    print("3. Generate API keys with trading permissions")
+    print("4. Add some testnet USDT (recommended: 1000+ USDT)")
+    
+    print("\n🔑 Enter your Binance testnet API credentials:")
+    
+    # Get API key
+    api_key = get_user_input("API Key")
+    if not api_key:
+        print("❌ API key is required!")
+        sys.exit(1)
+    
+    # Get secret key
+    secret_key = get_user_input("Secret Key", password=True)
+    if not secret_key:
+        print("❌ Secret key is required!")
+        sys.exit(1)
+    
+    print("\n📝 Updating configuration...")
+    
+    # Update config file
+    if not update_config_file(api_key, secret_key):
+        sys.exit(1)
+    
+    # Test connection
+    if not test_connection(api_key, secret_key):
+        print("\n❌ Setup failed! Please check your API credentials.")
+        sys.exit(1)
+    
+    print("\n🎉 Setup completed successfully!")
+    print("\n📚 Next steps:")
+    print("1. Run: aug live testnet --dry-run")
+    print("2. Test volume analysis: aug volume analyze --enhanced")
+    print("3. Test position sizing: aug position analyze --symbol BTC/USDT --budget 1000")
+    print("4. Start live trading: aug live start --paper")
+    
+    print("\n🔒 Security reminder:")
+    print("- Keep your API keys secure")
+    print("- Never share them publicly")
+    print("- Use testnet only for testing")
+    print("- Monitor your API usage")
 
 if __name__ == "__main__":
     main()

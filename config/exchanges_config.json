@@ -1,9 +1,21 @@
 {
   "binance": {
-    "api_key": "GiILtJYftlkHmrFR9OEtwtUwSW7AwfhjVuNnF2BhfJo9ortqq4Jx6WBrPDNKQ27A",
-    "secret": "I39DvP6C6rE2Ea1gjlwI16cj7igPcImDRiMMayJleOEAjMV2C7JzvcGM1O3VA3JV",
+    "spot": {
+      "api_key": "0asZMYrv9hUs3Quu2F6i5bnk2dYpdefynmH2oagg4bdGezq3aNXAB89vwegl6tKy",
+      "secret": "2gU6y7UvUirB7eUwnjZa65HBndX5CLg3TuE0SRMOuIPEs9RQZGv9yUXz97LQhnFk",
+      "enabled": true,
+      "testnet": true
+    },
+    "futures": {
+      "api_key": "UhD6mQAaMzn6b5vJBiHKU2bUyJZXnqB1u2MuiV9xePKVDp3NXiXT5GzgdA0Ihhes",
+      "secret": "nhHmwehnsbFPV5sNnNPeRiIqIttCsveDZuixkKHfz8iJuy526enQ0UVcCeVw6mCn",
+      "enabled": true,
+      "testnet": true
+    },
     "enabled": true,
-    "testnet": true
+    "testnet": true,
+    "api_key": "0asZMYrv9hUs3Quu2F6i5bnk2dYpdefynmH2oagg4bdGezq3aNXAB89vwegl6tKy",
+    "secret": "2gU6y7UvUirB7eUwnjZa65HBndX5CLg3TuE0SRMOuIPEs9RQZGv9yUXz97LQhnFk"
   },
   "volume_settings": {
     "min_volume_usd_24h": 1000000,
