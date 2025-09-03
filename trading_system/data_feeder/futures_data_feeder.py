@@ -24,18 +24,14 @@ class FuturesDataFeeder:
         """Initialize futures data feeder with multiple exchanges."""
         self.exchanges = {}
         self.supported_exchanges = [
-            ExchangeType.BINANCE,
-            ExchangeType.BYBIT,
-            ExchangeType.OKX,
-            ExchangeType.BITGET,
-            ExchangeType.GATE
+            ExchangeType.BINANCE
         ]
         
         # Initialize exchanges
         self._init_exchanges(exchanges_config or {})
         
         # Volume thresholds for filtering
-        self.min_volume_usd_24h = 1_000_000  # $1M minimum daily volume
+        self.min_volume_usd_24h = 1_000  # $1K minimum daily volume for testnet
         self.min_volume_rank = 200  # Top 200 by volume
         
         logger.info(f"FuturesDataFeeder initialized with {len(self.exchanges)} exchanges")
@@ -49,42 +45,6 @@ class FuturesDataFeeder:
                     'defaultType': 'future',  # Use futures API
                     'sandbox': False,
                     'rateLimit': 1200,
-                    'enableRateLimit': True,
-                }
-            },
-            ExchangeType.BYBIT: {
-                'class': ccxt.bybit,
-                'options': {
-                    'defaultType': 'future',
-                    'sandbox': False,
-                    'rateLimit': 1000,
-                    'enableRateLimit': True,
-                }
-            },
-            ExchangeType.OKX: {
-                'class': ccxt.okx,
-                'options': {
-                    'defaultType': 'swap',  # Perpetual futures
-                    'sandbox': False,
-                    'rateLimit': 1000,
-                    'enableRateLimit': True,
-                }
-            },
-            ExchangeType.BITGET: {
-                'class': ccxt.bitget,
-                'options': {
-                    'defaultType': 'swap',
-                    'sandbox': False,
-                    'rateLimit': 1000,
-                    'enableRateLimit': True,
-                }
-            },
-            ExchangeType.GATE: {
-                'class': ccxt.gate,
-                'options': {
-                    'defaultType': 'future',
-                    'sandbox': False,
-                    'rateLimit': 1000,
                     'enableRateLimit': True,
                 }
             }
@@ -104,8 +64,26 @@ class FuturesDataFeeder:
                         options['secret'] = user_config['secret']
                     if 'password' in user_config:  # For OKX
                         options['password'] = user_config['password']
+                    # Handle testnet configuration
+                    if user_config.get('testnet', False):
+                        options['sandbox'] = True
+                        options['sandboxMode'] = True
+                        if exchange_type == ExchangeType.BINANCE:
+                            options['urls'] = {
+                                'api': {
+                                    'public': 'https://testnet.binance.vision/api/v3',
+                                    'private': 'https://testnet.binance.vision/api/v3',
+                                    'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                                    'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+                                    'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                    'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                }
+                            }
                 
                 exchange = exchange_config['class'](options)
+                # Disable currency fetching for testnet
+                if user_config.get('testnet', False):
+                    exchange.options['fetchCurrencies'] = False
                 self.exchanges[exchange_type] = exchange
                 logger.info(f"Initialized {exchange_type.value} exchange")
                 
@@ -203,26 +181,19 @@ class FuturesDataFeeder:
     
     def _is_futures_symbol(self, symbol: str, exchange_type: ExchangeType) -> bool:
         """Check if a symbol is a futures market."""
-        # Common futures symbol patterns
-        futures_patterns = [
-            'USDT',  # Perpetual futures usually end with USDT
-            'USD',   # Some use USD
-            'PERP',  # Some explicitly mark as perpetual
-        ]
-        
-        # Exchange-specific patterns
+        # Only Binance is supported
         if exchange_type == ExchangeType.BINANCE:
-            return symbol.endswith('USDT') and '/' not in symbol.replace('USDT', '')
-        elif exchange_type == ExchangeType.BYBIT:
-            return 'USDT' in symbol or 'USD' in symbol
-        elif exchange_type == ExchangeType.OKX:
-            return '-SWAP' in symbol or 'USDT-SWAP' in symbol
-        elif exchange_type == ExchangeType.BITGET:
-            return 'USDT' in symbol and 'UMCBL' in symbol
-        elif exchange_type == ExchangeType.GATE:
-            return '_USDT' in symbol or '_USD' in symbol
+            # Check for futures patterns
+            if symbol.endswith('USDT') and '/' not in symbol.replace('USDT', ''):
+                return True
+            # Also check for testnet format like BTC/USDT:USDT
+            if ':USDT' in symbol:
+                return True
+            # Check for spot format that might be used for futures in testnet
+            if symbol.endswith('/USDT'):
+                return True
         
-        return any(pattern in symbol for pattern in futures_patterns)
+        return False
     
     def get_all_exchanges_volume_metrics(self) -> Dict[ExchangeType, List[VolumeMetrics]]:
         """Get volume metrics from all available exchanges."""

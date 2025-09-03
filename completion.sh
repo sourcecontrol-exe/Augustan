@@ -68,7 +68,7 @@ _aug_completion() {
             ;;
         --exchanges|-e)
             # Complete exchange names
-            exchanges="binance bybit okx bitget gate"
+            exchanges="binance"
             COMPREPLY=( $(compgen -W "${exchanges}" -- "${cur}") )
             return 0
             ;;

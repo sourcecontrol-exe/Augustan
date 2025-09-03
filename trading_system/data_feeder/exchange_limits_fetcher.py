@@ -32,19 +32,10 @@ class ExchangeLimitsFetcher:
                     'rateLimit': 1200,
                     'enableRateLimit': True,
                 }
-            },
-            ExchangeType.BYBIT: {
-                'class': ccxt.bybit,
-                'options': {
-                    'defaultType': 'future',
-                    'sandbox': False,
-                    'rateLimit': 1000,
-                    'enableRateLimit': True,
-                }
             }
         }
         
-        for exchange_type in [ExchangeType.BINANCE, ExchangeType.BYBIT]:
+        for exchange_type in [ExchangeType.BINANCE]:
             try:
                 exchange_config = exchange_configs[exchange_type]
                 options = exchange_config['options'].copy()
@@ -56,6 +47,22 @@ class ExchangeLimitsFetcher:
                         options['apiKey'] = user_config['api_key']
                     if 'secret' in user_config:
                         options['secret'] = user_config['secret']
+                    # Handle testnet configuration
+                    if user_config.get('testnet', False):
+                        options['sandbox'] = True
+                        options['sandboxMode'] = True
+                        if exchange_type == ExchangeType.BINANCE:
+                            # Use the test URLs that ccxt provides
+                            options['urls'] = {
+                                'api': {
+                                    'public': 'https://testnet.binance.vision/api/v3',
+                                    'private': 'https://testnet.binance.vision/api/v3',
+                                    'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                                    'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+                                    'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                    'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                }
+                            }
                 
                 exchange = exchange_config['class'](options)
                 self.exchanges[exchange_type] = exchange

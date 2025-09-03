@@ -33,7 +33,7 @@ def get_symbols(ctx, args, incomplete):
 
 def get_exchanges(ctx, args, incomplete):
     """Auto-complete for exchange names."""
-    exchanges = ['binance', 'bybit', 'okx', 'bitget', 'gate']
+    exchanges = ['binance']
     return [e for e in exchanges if incomplete.lower() in e.lower()]
 
 
@@ -207,7 +207,7 @@ def volume_analyze(ctx, exchanges, min_volume, max_rank, output, format, save, e
 
 @volume.command('top')
 @click.option('--limit', '-l', type=int, default=10, help='Number of top markets to show')
-@click.option('--exchange', '-e', type=click.Choice(['binance', 'bybit', 'okx', 'bitget', 'gate']),
+@click.option('--exchange', '-e', type=click.Choice(['binance']),
               help='Filter by specific exchange')
 @click.pass_context
 def volume_top(ctx, limit, exchange):
@@ -1116,6 +1116,53 @@ def live_test(ctx):
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+
+@live.command('testnet')
+@click.option('--setup', is_flag=True, help='Setup testnet configuration')
+@click.option('--dry-run', is_flag=True, help='Run comprehensive testnet dry-run')
+@click.pass_context
+def live_testnet(ctx, setup, dry_run):
+    """
+    Testnet operations for Binance testnet.
+    
+    Examples:
+        aug live testnet --setup          # Setup testnet configuration
+        aug live testnet --dry-run        # Run comprehensive dry-run
+    """
+    if setup:
+        click.echo("🔧 Setting up Binance testnet configuration...")
+        try:
+            import subprocess
+            result = subprocess.run(['python3', 'setup_testnet.py'], 
+                                  capture_output=True, text=True)
+            click.echo(result.stdout)
+            if result.returncode != 0:
+                click.echo(result.stderr, err=True)
+                sys.exit(1)
+        except Exception as e:
+            click.echo(f"❌ Error running setup: {e}", err=True)
+            sys.exit(1)
+    
+    elif dry_run:
+        click.echo("🚀 Running comprehensive testnet dry-run...")
+        try:
+            import subprocess
+            result = subprocess.run(['python3', 'testnet_dry_run.py'], 
+                                  capture_output=True, text=True)
+            click.echo(result.stdout)
+            if result.returncode != 0:
+                click.echo(result.stderr, err=True)
+                sys.exit(1)
+        except Exception as e:
+            click.echo(f"❌ Error running dry-run: {e}", err=True)
+            sys.exit(1)
+    
+    else:
+        click.echo("Please specify --setup or --dry-run")
+        click.echo("Examples:")
+        click.echo("  aug live testnet --setup    # Setup testnet configuration")
+        click.echo("  aug live testnet --dry-run  # Run comprehensive dry-run")
 
 
 if __name__ == '__main__':
