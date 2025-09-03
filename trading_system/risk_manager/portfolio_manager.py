@@ -389,6 +389,30 @@ class PortfolioManager:
         if len(self.daily_pnl_history) > 30:
             self.daily_pnl_history.pop(0)
     
+    def on_order_filled(self, order_id: str, order_result):
+        """
+        Handle order fill events from OrderManager.
+        
+        This method is called when an order is filled, allowing the PortfolioManager
+        to update position state and track execution details.
+        
+        Args:
+            order_id: Order ID that was filled
+            order_result: Order result with fill details
+        """
+        try:
+            # Extract order details from the order manager
+            # This assumes the order manager has the order request stored
+            # The actual implementation would need to access the order request
+            
+            logger.info(f"PortfolioManager received order fill: {order_id}")
+            
+            # Update position state based on fill
+            # This is handled by the LiveTradingEngine for now
+            
+        except Exception as e:
+            logger.error(f"Error handling order fill in PortfolioManager: {e}")
+    
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics."""
         if not self.trade_history:

@@ -14,6 +14,7 @@ from ..risk_manager.portfolio_manager import PortfolioManager
 from ..core.position_state import PositionManager, EnhancedSignal, SignalType, PositionState
 from ..core.config_manager import get_config_manager
 from .signal_processor import LiveSignalProcessor
+from .order_manager import OrderManager, OrderRequest, OrderType, OrderStatus
 
 
 class LiveTradingEngine:
@@ -54,6 +55,7 @@ class LiveTradingEngine:
         self.realtime_feeder = MultiExchangeRealtimeFeeder(watchlist, timeframe='1m')
         self.portfolio_manager = PortfolioManager(initial_balance, config_path)
         self.signal_processor = LiveSignalProcessor(config_path)
+        self.order_manager = OrderManager(config_path, testnet=paper_trading)
         
         # State management
         self.is_running = False
@@ -84,8 +86,17 @@ class LiveTradingEngine:
         # Set up real-time data callback
         self.realtime_feeder.add_price_callback(self._on_price_update)
         
+        # Set up order manager callbacks
+        self.order_manager.add_fill_callback(self._on_order_filled)
+        
+        # Connect PortfolioManager to OrderManager
+        self.order_manager.add_fill_callback(self.portfolio_manager.on_order_filled)
+        
         # Start real-time data feeds
         self.realtime_feeder.start()
+        
+        # Start order monitoring
+        self.order_manager.start_order_monitoring()
         
         # Start monitoring loop in separate thread
         monitor_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
@@ -104,6 +115,9 @@ class LiveTradingEngine:
         # Stop real-time feeds with cleanup
         self.realtime_feeder.stop()
         self.realtime_feeder.cleanup()
+        
+        # Stop order monitoring
+        self.order_manager.stop_order_monitoring()
         
         # Close all positions if in paper trading mode
         if self.paper_trading:
@@ -199,7 +213,7 @@ class LiveTradingEngine:
     
     def _execute_trade(self, risk_result) -> bool:
         """
-        Execute a trade.
+        Execute a trade using OrderManager.
         
         Args:
             risk_result: Risk calculation result
@@ -207,18 +221,39 @@ class LiveTradingEngine:
         Returns:
             True if trade executed successfully
         """
-        if self.paper_trading:
-            # Paper trading - just update portfolio state
-            success = self.portfolio_manager.execute_trade(risk_result)
-            if success:
-                logger.info(f"📄 PAPER TRADE: {risk_result.signal.symbol} "
+        try:
+            # Create order request
+            order_request = OrderRequest(
+                symbol=risk_result.signal.symbol,
+                side='buy' if risk_result.signal.signal_type == SignalType.LONG else 'sell',
+                order_type=OrderType.MARKET,  # Use market orders for immediate execution
+                quantity=risk_result.position_size,
+                leverage=risk_result.leverage,
+                test=self.paper_trading
+            )
+            
+            # Place order through OrderManager
+            order_result = self.order_manager.place_order(order_request)
+            
+            if order_result.success:
+                logger.info(f"✅ ORDER PLACED: {risk_result.signal.symbol} "
                            f"{risk_result.signal.signal_type.value} - "
                            f"Size: {risk_result.position_size:.6f}, "
-                           f"Value: ${risk_result.position_value:.2f}")
-            return success
-        else:
-            # Real trading - would integrate with exchange API
-            logger.warning("🚨 REAL TRADING NOT IMPLEMENTED - Use paper_trading=True")
+                           f"Value: ${risk_result.position_value:.2f} "
+                           f"(Order ID: {order_result.order_id})")
+                
+                # Update portfolio state immediately for paper trading
+                if self.paper_trading:
+                    self.portfolio_manager.execute_trade(risk_result)
+                
+                return True
+            else:
+                logger.error(f"❌ ORDER FAILED: {risk_result.signal.symbol} - "
+                            f"{order_result.error_message}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error executing trade: {e}")
             return False
     
     def _monitoring_loop(self):
@@ -255,6 +290,70 @@ class LiveTradingEngine:
                 logger.error(f"Monitoring loop error: {e}")
                 time.sleep(60)  # Wait longer on error
     
+    def _on_order_filled(self, order_id: str, order_result):
+        """
+        Handle order fill events from OrderManager.
+        
+        Args:
+            order_id: Order ID that was filled
+            order_result: Order result with fill details
+        """
+        try:
+            # Get order details
+            order_info = self.order_manager.active_orders.get(order_id)
+            if not order_info:
+                logger.warning(f"Order {order_id} not found in active orders")
+                return
+            
+            order_request = order_info['order_request']
+            symbol = order_request.symbol
+            
+            logger.info(f"🎯 ORDER FILLED: {symbol} - "
+                       f"Quantity: {order_result.filled_quantity}, "
+                       f"Price: ${order_result.average_price:.4f}")
+            
+            # Update portfolio state for real trading
+            if not self.paper_trading:
+                # In real trading, we need to update the portfolio when orders are filled
+                # This ensures accurate position tracking
+                self._update_portfolio_on_fill(order_request, order_result)
+            
+        except Exception as e:
+            logger.error(f"Error handling order fill: {e}")
+    
+    def _update_portfolio_on_fill(self, order_request, order_result):
+        """Update portfolio state when an order is filled."""
+        try:
+            # Determine position state based on order side
+            if order_request.side == 'buy':
+                position_state = PositionState.LONG
+            else:
+                position_state = PositionState.SHORT
+            
+            # Update position in portfolio manager
+            self.portfolio_manager.position_manager.set_position_state(
+                order_request.symbol, 
+                position_state
+            )
+            
+            # Update position details
+            if order_result.average_price:
+                self.portfolio_manager.position_manager.update_position_entry_price(
+                    order_request.symbol, 
+                    order_result.average_price
+                )
+            
+            if order_result.filled_quantity:
+                self.portfolio_manager.position_manager.update_position_quantity(
+                    order_request.symbol, 
+                    order_result.filled_quantity
+                )
+            
+            logger.info(f"✅ Portfolio updated for filled order: {order_request.symbol}")
+            
+        except Exception as e:
+            logger.error(f"Error updating portfolio on fill: {e}")
+    
     def _update_position_pnls(self):
         """Update unrealized PnL for all positions."""
         active_positions = self.portfolio_manager.position_manager.get_active_positions()
@@ -268,6 +367,7 @@ class LiveTradingEngine:
         """Get comprehensive engine status."""
         portfolio_metrics = self.portfolio_manager.calculate_portfolio_metrics()
         realtime_status = self.realtime_feeder.get_system_status()
+        order_manager_status = self.order_manager.get_system_status()
         
         return {
             'engine_info': {
@@ -279,6 +379,7 @@ class LiveTradingEngine:
             },
             'portfolio': portfolio_metrics.to_dict(),
             'realtime_feeds': realtime_status,
+            'order_manager': order_manager_status,
             'performance': self.portfolio_manager.get_performance_stats(),
             'last_updated': datetime.now().isoformat()
         }

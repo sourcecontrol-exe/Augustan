@@ -140,6 +140,17 @@ class PositionManager:
             self.positions[symbol].quantity = None
             self.positions[symbol].unrealized_pnl = None
     
+    def update_position_entry_price(self, symbol: str, entry_price: float):
+        """Update entry price for a position."""
+        if symbol in self.positions:
+            self.positions[symbol].entry_price = entry_price
+            self.positions[symbol].entry_time = datetime.now()
+    
+    def update_position_quantity(self, symbol: str, quantity: float):
+        """Update quantity for a position."""
+        if symbol in self.positions:
+            self.positions[symbol].quantity = quantity
+    
     def update_position_pnl(self, symbol: str, current_price: float):
         """Update unrealized PnL for a position."""
         if symbol not in self.positions or self.positions[symbol].state == PositionState.FLAT:
