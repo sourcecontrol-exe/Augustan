@@ -26,15 +26,23 @@ class BinanceDataFeeder:
                 'secret': api_secret,
                 'sandbox': True,
                 'test': True,
-                'urls': {
-                    'api': {
-                        'public': 'https://testnet.binance.vision/api/v3',
-                        'private': 'https://testnet.binance.vision/api/v3',
-                    }
-                },
                 'rateLimit': 1200,
                 'enableRateLimit': True,
+                'options': {
+                    'defaultType': 'spot',
+                    'adjustForTimeDifference': True,
+                }
             })
+            
+            # Force testnet URLs - CCXT doesn't switch properly with API keys
+            self.exchange.urls['api'] = {
+                'public': 'https://testnet.binance.vision/api/v3',
+                'private': 'https://testnet.binance.vision/api/v3',
+            }
+            
+            # Disable SAPI endpoints for testnet
+            if 'sapi' in self.exchange.urls['api']:
+                del self.exchange.urls['api']['sapi']
         else:
             self.exchange = ccxt.binance({
                 'apiKey': api_key,
@@ -73,8 +81,20 @@ class BinanceDataFeeder:
     def get_symbols(self) -> List[str]:
         """Get available trading symbols."""
         try:
-            markets = self.exchange.load_markets()
-            return [symbol for symbol in markets.keys() if '/USDT' in symbol]
+            # Use direct API call instead of load_markets() to avoid SAPI endpoints
+            if self.exchange.sandbox:
+                # For testnet, use direct API call
+                import requests
+                response = requests.get('https://testnet.binance.vision/api/v3/exchangeInfo')
+                data = response.json()
+                symbols = [symbol['symbol'] for symbol in data['symbols'] if symbol['status'] == 'TRADING' and symbol['symbol'].endswith('USDT')]
+                # Convert to CCXT format
+                ccxt_symbols = [f"{symbol[:-4]}/{symbol[-4:]}" for symbol in symbols]
+                return ccxt_symbols
+            else:
+                # For mainnet, use CCXT
+                markets = self.exchange.load_markets()
+                return [symbol for symbol in markets.keys() if '/USDT' in symbol]
         except Exception as e:
             logger.error(f"Error fetching symbols: {e}")
             return self.default_symbols
@@ -143,8 +163,19 @@ class BinanceDataFeeder:
     def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol."""
         try:
-            ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            # Use direct API call instead of fetch_ticker() to avoid SAPI endpoints
+            if self.exchange.sandbox:
+                # For testnet, use direct API call
+                import requests
+                # Convert CCXT symbol format to Binance format
+                binance_symbol = symbol.replace('/', '')
+                response = requests.get(f'https://testnet.binance.vision/api/v3/ticker/price?symbol={binance_symbol}')
+                data = response.json()
+                return float(data['price'])
+            else:
+                # For mainnet, use CCXT
+                ticker = self.exchange.fetch_ticker(symbol)
+                return float(ticker['last'])
         except Exception as e:
             logger.error(f"Error fetching current price for {symbol}: {e}")
             return None

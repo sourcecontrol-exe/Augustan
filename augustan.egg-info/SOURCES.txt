@@ -24,6 +24,7 @@ trading_system/core/position_state.py
 trading_system/core/resilient_fetcher.py
 trading_system/data_feeder/__init__.py
 trading_system/data_feeder/binance_feeder.py
+trading_system/data_feeder/binance_futures_feeder.py
 trading_system/data_feeder/exchange_limits_fetcher.py
 trading_system/data_feeder/futures_data_feeder.py
 trading_system/data_feeder/realtime_feeder.py
@@ -42,7 +43,10 @@ trading_system/strategy_engine/base_strategy.py
 trading_system/strategy_engine/macd_strategy.py
 trading_system/strategy_engine/rsi_strategy.py
 trading_system/strategy_engine/strategy_engine.py
+volume_data/enhanced_volume_analysis_20250903_235903.json
 volume_data/futures_volume_analysis_20250902_025756.json
 volume_data/futures_volume_analysis_20250902_030149.json
 volume_data/futures_volume_analysis_20250903_234625.json
+volume_data/futures_volume_analysis_20250904_010129.json
+volume_data/latest_enhanced_analysis.json
 volume_data/latest_volume_analysis.json

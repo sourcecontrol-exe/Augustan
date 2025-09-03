@@ -274,7 +274,7 @@ def live(ctx):
 
 @position.command('analyze')
 @click.option('--symbol', '-s', required=True, shell_complete=get_symbols, help='Symbol to analyze (e.g., BTC/USDT)')
-@click.option('--budget', type=float, default=50.0, help='Trading budget in USDT')
+@click.option('--budget', type=float, help='Trading budget in USDT (auto-fetched from wallet if not provided)')
 @click.option('--risk-percent', type=float, default=0.2, help='Risk per trade in %')
 @click.option('--leverage', type=int, default=5, help='Leverage to use (1-100x)')
 @click.option('--stop-loss-percent', type=float, default=2.0, help='Stop loss in % from entry')
@@ -284,18 +284,48 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
     Analyze position sizing for a specific symbol.
     
     Examples:
-        aug position analyze --symbol BTC/USDT --budget 100
+        aug position analyze --symbol BTC/USDT  # Uses wallet balance
+        aug position analyze --symbol BTC/USDT --budget 100  # Uses specified budget
         aug position analyze --symbol ETH/USDT --risk-percent 0.5 --leverage 10
     """
     click.echo(f"💰 Analyzing position sizing for {symbol}...")
     
     try:
         from .data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
+        from .data_feeder.binance_feeder import BinanceDataFeeder
+        from .data_feeder.binance_futures_feeder import BinanceFuturesFeeder
         from .core.position_sizing import (
             PositionSizingCalculator, PositionSizingInput, 
             RiskManagementConfig, PositionSide
         )
         from .core.futures_models import ExchangeType
+        
+        # Determine if this is a futures symbol
+        is_futures = ':USDT' in symbol
+        
+        # Auto-fetch budget from wallet if not provided
+        if budget is None:
+            click.echo("🔍 Fetching available balance from wallet...")
+            
+            if is_futures:
+                # Use futures feeder for futures symbols
+                feeder = BinanceFuturesFeeder(testnet=True)
+                account_info = feeder.get_account_info()
+            else:
+                # Use spot feeder for spot symbols
+                feeder = BinanceDataFeeder(testnet=True)
+                account_info = feeder.get_account_info()
+            
+            if account_info and 'USDT' in account_info.get('free', {}):
+                budget = float(account_info['free']['USDT'])
+                click.echo(f"✅ Wallet balance: ${budget:.2f} USDT")
+            else:
+                # Fallback to default budget
+                budget = 50.0
+                click.echo(f"⚠️  Could not fetch wallet balance, using default: ${budget:.2f} USDT")
+                click.echo("   (Account info may not be available in testnet)")
+        else:
+            click.echo(f"💰 Using specified budget: ${budget:.2f} USDT")
         
         # Initialize configuration manager and get risk config
         config_manager = get_config_manager(ctx.obj['config'])

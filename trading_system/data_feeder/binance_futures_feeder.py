@@ -28,18 +28,21 @@ class BinanceFuturesFeeder:
                 'test': True,
                 'options': {
                     'defaultType': 'future',  # Use futures API
-                },
-                'urls': {
-                    'api': {
-                        'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
-                        'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
-                        'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
-                        'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
-                    }
+                    'adjustForTimeDifference': True,
                 },
                 'rateLimit': 1200,
                 'enableRateLimit': True,
             })
+            
+            # Force testnet URLs - CCXT doesn't switch properly with API keys
+            self.exchange.urls['api'] = {
+                'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+            }
+            
+            # Disable SAPI endpoints for testnet
+            if 'sapi' in self.exchange.urls['api']:
+                del self.exchange.urls['api']['sapi']
         else:
             self.exchange = ccxt.binance({
                 'apiKey': api_key,
@@ -81,8 +84,20 @@ class BinanceFuturesFeeder:
     def get_symbols(self) -> List[str]:
         """Get available futures trading symbols."""
         try:
-            markets = self.exchange.load_markets()
-            return [symbol for symbol in markets.keys() if ':USDT' in symbol]
+            # Use direct API call instead of load_markets() to avoid SAPI endpoints
+            if self.exchange.sandbox:
+                # For testnet, use direct API call
+                import requests
+                response = requests.get('https://testnet.binancefuture.com/fapi/v1/exchangeInfo')
+                data = response.json()
+                symbols = [symbol['symbol'] for symbol in data['symbols'] if symbol['status'] == 'TRADING' and symbol['symbol'].endswith('USDT')]
+                # Convert to CCXT format
+                ccxt_symbols = [f"{symbol}:USDT" for symbol in symbols]
+                return ccxt_symbols
+            else:
+                # For mainnet, use CCXT
+                markets = self.exchange.load_markets()
+                return [symbol for symbol in markets.keys() if ':USDT' in symbol]
         except Exception as e:
             logger.error(f"Error fetching futures symbols: {e}")
             return self.default_symbols
@@ -151,8 +166,25 @@ class BinanceFuturesFeeder:
     def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a futures symbol."""
         try:
-            ticker = self.exchange.fetch_ticker(symbol)
-            return float(ticker['last'])
+            # Use direct API call instead of fetch_ticker() to avoid SAPI endpoints
+            if self.exchange.sandbox:
+                # For testnet, use direct API call
+                import requests
+                # Convert CCXT symbol format to Binance format
+                binance_symbol = symbol.replace('/', '').replace(':USDT', '')
+                response = requests.get(f'https://testnet.binancefuture.com/fapi/v1/ticker/price?symbol={binance_symbol}')
+                data = response.json()
+                if 'price' in data:
+                    return float(data['price'])
+                else:
+                    # Try alternative endpoint
+                    response = requests.get(f'https://testnet.binancefuture.com/fapi/v1/ticker/24hr?symbol={binance_symbol}')
+                    data = response.json()
+                    return float(data['lastPrice'])
+            else:
+                # For mainnet, use CCXT
+                ticker = self.exchange.fetch_ticker(symbol)
+                return float(ticker['last'])
         except Exception as e:
             logger.error(f"Error fetching current futures price for {symbol}: {e}")
             return None

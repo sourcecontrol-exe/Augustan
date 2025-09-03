@@ -66,7 +66,7 @@ aug position tradeable --budget 50
 
 ### 2. **Analyze Specific Symbol Position Sizing**
 ```bash
-aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 ```
 **Result**: Detailed position sizing analysis with safety metrics.
 
@@ -85,7 +85,7 @@ aug trading analyze --use-tradeable --budget 50
 ## 📊 **Real Example Output**
 
 ```bash
-$ aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+$ aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 
 📊 Position Sizing Analysis for DOGE/USDT
 ============================================================

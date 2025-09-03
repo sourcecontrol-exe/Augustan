@@ -95,10 +95,13 @@ aug volume top --min-volume 10000000
 ## 💰 Position Sizing Commands
 
 ### `aug position analyze`
-Analyze position sizing for a specific symbol.
+Analyze position sizing for a specific symbol. Budget is automatically fetched from wallet if not specified.
 
 ```bash
-# Basic analysis
+# Auto-fetch budget from wallet
+aug position analyze --symbol BTC/USDT
+
+# Use specified budget
 aug position analyze --symbol BTC/USDT --budget 100
 
 # Custom risk parameters
@@ -110,7 +113,7 @@ aug position analyze --symbol DOGE/USDT --budget 50 --stop-loss-percent 3.0
 
 **Options:**
 - `--symbol TEXT`: Symbol to analyze (required)
-- `--budget FLOAT`: Trading budget in USDT (default: 50)
+- `--budget FLOAT`: Trading budget in USDT (auto-fetched from wallet if not provided)
 - `--risk-percent FLOAT`: Risk per trade in % (default: 0.2)
 - `--leverage INTEGER`: Leverage to use (default: 5)
 - `--stop-loss-percent FLOAT`: Stop loss in % (default: 2.0)
