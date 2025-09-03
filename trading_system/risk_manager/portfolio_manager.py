@@ -1,6 +1,8 @@
 """
 Portfolio Manager - Manages Multiple Positions and Overall Risk
 """
+import json
+import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
@@ -412,6 +414,86 @@ class PortfolioManager:
             
         except Exception as e:
             logger.error(f"Error handling order fill in PortfolioManager: {e}")
+    
+    def save_state(self, file_path: str):
+        """
+        Save portfolio state to file.
+        
+        Args:
+            file_path: Path to save the state file
+        """
+        try:
+            state_data = {
+                'initial_balance': self.initial_balance,
+                'current_balance': self.current_balance,
+                'positions': {
+                    symbol: pos.to_dict() for symbol, pos in self.position_manager.positions.items()
+                },
+                'trade_history': self.trade_history,
+                'daily_pnl_history': self.daily_pnl_history,
+                'max_positions': self.max_positions,
+                'max_portfolio_risk': self.max_portfolio_risk,
+                'max_correlation_exposure': self.max_correlation_exposure,
+                'saved_at': datetime.now().isoformat()
+            }
+            
+            with open(file_path, 'w') as f:
+                json.dump(state_data, f, indent=2, default=str)
+            
+            logger.info(f"Portfolio state saved to {file_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save portfolio state: {e}")
+            raise
+    
+    def load_state(self, file_path: str):
+        """
+        Load portfolio state from file.
+        
+        Args:
+            file_path: Path to load the state file from
+        """
+        try:
+            if not os.path.exists(file_path):
+                logger.warning(f"State file not found: {file_path}. Using defaults.")
+                return
+            
+            with open(file_path, 'r') as f:
+                state_data = json.load(f)
+            
+            # Load basic data
+            self.current_balance = state_data.get('current_balance', self.initial_balance)
+            self.max_positions = state_data.get('max_positions', 5)
+            self.max_portfolio_risk = state_data.get('max_portfolio_risk', 0.05)
+            self.max_correlation_exposure = state_data.get('max_correlation_exposure', 0.3)
+            
+            # Load positions
+            positions_data = state_data.get('positions', {})
+            for symbol, pos_data in positions_data.items():
+                position_info = PositionInfo(
+                    state=PositionState(pos_data['state']),
+                    symbol=pos_data['symbol'],
+                    entry_price=pos_data.get('entry_price'),
+                    entry_time=datetime.fromisoformat(pos_data['entry_time']) if pos_data.get('entry_time') else None,
+                    quantity=pos_data.get('quantity'),
+                    unrealized_pnl=pos_data.get('unrealized_pnl'),
+                    stop_loss=pos_data.get('stop_loss'),
+                    take_profit=pos_data.get('take_profit')
+                )
+                self.position_manager.positions[symbol] = position_info
+            
+            # Load trade history
+            self.trade_history = state_data.get('trade_history', [])
+            
+            # Load daily PnL history
+            self.daily_pnl_history = state_data.get('daily_pnl_history', [])
+            
+            logger.info(f"Portfolio state loaded from {file_path}")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in state file: {e}. Using defaults.")
+        except Exception as e:
+            logger.error(f"Failed to load portfolio state: {e}. Using defaults.")
     
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics."""
