@@ -71,9 +71,11 @@ def get_output_formats(ctx, args, incomplete):
 @click.version_option(version="1.0.0", prog_name="Augustan Trading CLI")
 @click.option('--config', '-c', default='config/exchanges_config.json', 
               help='Path to configuration file')
+@click.option('--mode', '-m', type=click.Choice(['paper', 'live']), 
+              help='Trading mode (paper/live)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
 @click.pass_context
-def cli(ctx, config, verbose):
+def cli(ctx, config, mode, verbose):
     """
     🚀 Augustan Trading System CLI
     
@@ -91,7 +93,24 @@ def cli(ctx, config, verbose):
     Auto-completion: Press TAB to get suggestions for commands, options, and values.
     """
     ctx.ensure_object(dict)
+    
+    # Handle trading mode
+    if mode:
+        if mode == 'paper':
+            config = 'config/paper_trading_config.json'
+        elif mode == 'live':
+            config = 'config/live_trading_config.json'
+            # Warn about live trading
+            click.echo("⚠️  WARNING: Live trading mode selected!")
+            click.echo("   This will use real money. Make sure you have:")
+            click.echo("   1. Configured your API keys in config/live_trading_config.json")
+            click.echo("   2. Tested thoroughly in paper mode")
+            click.echo("   3. Understood the risks involved")
+            if not click.confirm("Do you want to continue with live trading?"):
+                sys.exit(0)
+    
     ctx.obj['config'] = config
+    ctx.obj['mode'] = mode
     ctx.obj['verbose'] = verbose
     
     # Ensure config directory exists
@@ -307,22 +326,43 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
         if budget is None:
             click.echo("🔍 Fetching available balance from wallet...")
             
+            # Get config to determine testnet setting
+            config_manager = get_config_manager(ctx.obj['config'])
+            binance_config = config_manager.get_exchange_config('binance')
+            testnet = binance_config.get('testnet', True)
+            
             if is_futures:
                 # Use futures feeder for futures symbols
-                feeder = BinanceFuturesFeeder(testnet=True)
+                feeder = BinanceFuturesFeeder(testnet=testnet)
                 account_info = feeder.get_account_info()
             else:
                 # Use spot feeder for spot symbols
-                feeder = BinanceDataFeeder(testnet=True)
+                feeder = BinanceDataFeeder(testnet=testnet)
                 account_info = feeder.get_account_info()
             
-            if account_info and 'USDT' in account_info.get('free', {}):
-                budget = float(account_info['free']['USDT'])
-                click.echo(f"✅ Wallet balance: ${budget:.2f} USDT")
+            if account_info:
+                # Handle both real API response and mock service response
+                if 'USDT' in account_info:
+                    # Mock service response (CCXT format)
+                    budget = float(account_info['USDT']['free'])
+                    click.echo(f"✅ Mock wallet balance: ${budget:.2f} USDT")
+                elif 'free' in account_info and 'USDT' in account_info['free']:
+                    # Real API response
+                    budget = float(account_info['free']['USDT'])
+                    click.echo(f"✅ Wallet balance: ${budget:.2f} USDT")
+                else:
+                    # Fallback to config file default budget
+                    config_manager = get_config_manager(ctx.obj['config'])
+                    risk_config = config_manager.get_risk_management_config()
+                    budget = risk_config.max_budget
+                    click.echo(f"⚠️  Could not fetch wallet balance, using config default: ${budget:.2f} USDT")
+                    click.echo("   (Account info may not be available in testnet)")
             else:
-                # Fallback to default budget
-                budget = 50.0
-                click.echo(f"⚠️  Could not fetch wallet balance, using default: ${budget:.2f} USDT")
+                # Fallback to config file default budget
+                config_manager = get_config_manager(ctx.obj['config'])
+                risk_config = config_manager.get_risk_management_config()
+                budget = risk_config.max_budget
+                click.echo(f"⚠️  Could not fetch wallet balance, using config default: ${budget:.2f} USDT")
                 click.echo("   (Account info may not be available in testnet)")
         else:
             click.echo(f"💰 Using specified budget: ${budget:.2f} USDT")
@@ -788,6 +828,17 @@ def config_init(ctx, force):
                 "enabled": True,
                 "testnet": False
             },
+            "risk_management": {
+                "default_budget": 500.0,
+                "max_risk_per_trade": 0.02,
+                "min_safety_ratio": 1.5,
+                "default_leverage": 5,
+                "max_position_percent": 0.1,
+                "stop_loss_percent": 2.0,
+                "take_profit_percent": 4.0,
+                "max_positions": 5,
+                "emergency_stop_loss": 10.0
+            },
             "volume_settings": {
                 "min_volume_usd_24h": 1000000,
                 "min_volume_rank": 200,
@@ -812,6 +863,87 @@ def config_init(ctx, force):
         
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@config.command('switch')
+@click.option('--mode', '-m', type=click.Choice(['paper', 'live']), required=True, 
+              help='Trading mode to switch to')
+@click.pass_context
+def config_switch(ctx, mode):
+    """Switch between paper and live trading configurations."""
+    try:
+        if mode == 'live':
+            click.echo("⚠️  WARNING: Switching to live trading mode!")
+            click.echo("   This will use real money. Make sure you have:")
+            click.echo("   1. Configured your API keys in config/live_trading_config.json")
+            click.echo("   2. Tested thoroughly in paper mode")
+            click.echo("   3. Understood the risks involved")
+            if not click.confirm("Do you want to switch to live trading?"):
+                return
+            
+            # Copy live config to default
+            import shutil
+            shutil.copy('config/live_trading_config.json', 'config/exchanges_config.json')
+            click.echo("✅ Switched to live trading configuration")
+        else:
+            # Copy paper config to default
+            import shutil
+            shutil.copy('config/paper_trading_config.json', 'config/exchanges_config.json')
+            click.echo("✅ Switched to paper trading configuration")
+            
+    except Exception as e:
+        click.echo(f"❌ Error switching configuration: {e}", err=True)
+        sys.exit(1)
+
+
+@config.command('update')
+@click.option('--section', '-s', required=True, help='Configuration section to update')
+@click.option('--default-budget', type=float, help='Default budget in USDT')
+@click.option('--max-risk-per-trade', type=float, help='Maximum risk per trade (0.01 = 1%)')
+@click.option('--min-safety-ratio', type=float, help='Minimum safety ratio')
+@click.option('--default-leverage', type=int, help='Default leverage')
+@click.option('--max-position-percent', type=float, help='Maximum position size as % of budget')
+@click.option('--stop-loss-percent', type=float, help='Default stop loss percentage')
+@click.option('--take-profit-percent', type=float, help='Default take profit percentage')
+@click.option('--max-positions', type=int, help='Maximum concurrent positions')
+@click.option('--emergency-stop-loss', type=float, help='Emergency stop loss percentage')
+@click.pass_context
+def config_update(ctx, section, **kwargs):
+    """Update configuration settings."""
+    try:
+        config_manager = get_config_manager(ctx.obj['config'])
+        
+        # Filter out None values and convert CLI options to config keys
+        key_mapping = {
+            'default_budget': 'default_budget',
+            'max_risk_per_trade': 'max_risk_per_trade',
+            'min_safety_ratio': 'min_safety_ratio',
+            'default_leverage': 'default_leverage',
+            'max_position_percent': 'max_position_percent',
+            'stop_loss_percent': 'stop_loss_percent',
+            'take_profit_percent': 'take_profit_percent',
+            'max_positions': 'max_positions',
+            'emergency_stop_loss': 'emergency_stop_loss'
+        }
+        updates = {key_mapping[k]: v for k, v in kwargs.items() if v is not None and k in key_mapping}
+        
+        if not updates:
+            click.echo("❌ No updates specified")
+            click.echo("Use --help to see available options")
+            return
+        
+        # Update configuration
+        config_manager.update_config(section, updates)
+        
+        click.echo(f"✅ Configuration updated for section: {section}")
+        click.echo("Updated values:")
+        for key, value in updates.items():
+            click.echo(f"  {key}: {value}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
         sys.exit(1)
 
 
@@ -1145,6 +1277,36 @@ def live_test(ctx):
         click.echo(f"❌ Test failed: {e}", err=True)
         import traceback
         traceback.print_exc()
+        sys.exit(1)
+
+
+@live.command('secure')
+@click.pass_context
+def live_secure(ctx):
+    """
+    Secure API keys by moving them to environment variables.
+    
+    This command will:
+    1. Extract API keys from config files
+    2. Create a .env file with the keys
+    3. Clean up config files to remove sensitive data
+    4. Update .gitignore if needed
+    
+    Examples:
+        aug live secure          # Secure API keys
+    """
+    click.echo("🔐 Securing API keys...")
+    try:
+        import subprocess
+        # Use echo "y" to automatically answer yes to overwrite prompt
+        result = subprocess.run(['bash', '-c', 'echo "y" | python3 secure_api_keys.py'], 
+                              capture_output=True, text=True)
+        click.echo(result.stdout)
+        if result.returncode != 0:
+            click.echo(result.stderr, err=True)
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Error securing API keys: {e}", err=True)
         sys.exit(1)
 
 

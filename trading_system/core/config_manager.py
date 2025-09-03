@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from .position_sizing import RiskManagementConfig
+from ..config_loader import SecureConfigLoader
 
 
 @dataclass
@@ -77,7 +78,7 @@ class ConfigManager:
             self._load_config(config_path)
     
     def _load_config(self, config_path: Optional[str] = None):
-        """Load configuration from JSON file."""
+        """Load configuration from JSON file with environment variable override."""
         if config_path:
             self._config_path = config_path
         else:
@@ -85,15 +86,15 @@ class ConfigManager:
             current_dir = Path(__file__).parent.parent.parent
             self._config_path = str(current_dir / "config" / "exchanges_config.json")
         
+        # Use secure config loader
+        config_dir = str(Path(self._config_path).parent)
+        secure_loader = SecureConfigLoader(config_dir)
+        
         try:
-            with open(self._config_path, 'r') as f:
-                self._config_data = json.load(f)
-            logger.info(f"Configuration loaded from {self._config_path}")
-        except FileNotFoundError:
-            logger.warning(f"Config file not found: {self._config_path}. Using defaults.")
-            self._config_data = self._get_default_config()
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in config file: {e}. Using defaults.")
+            self._config_data = secure_loader.load_config(Path(self._config_path).name)
+            logger.info(f"Configuration loaded from {self._config_path} with environment variable override")
+        except Exception as e:
+            logger.warning(f"Error loading config: {e}. Using defaults.")
             self._config_data = self._get_default_config()
     
     def _get_default_config(self) -> Dict[str, Any]:

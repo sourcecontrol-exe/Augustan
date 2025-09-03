@@ -65,6 +65,11 @@ test_*.py
 config/*.env
 config/secrets.json
 
+# Environment variables and backups
+.env
+.env.*
+*.env
+
 # Volume data (optional - uncomment if you don't want to track analysis results)
 # volume_data/*.json
 

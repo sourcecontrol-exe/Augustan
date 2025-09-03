@@ -170,6 +170,36 @@ aug trading signals --type buy --min-confidence 0.6
 aug trading signals --strategy rsi --limit 5
 ```
 
+## 🎯 Trading Modes
+
+The system supports two trading modes with separate configurations:
+
+### **📝 Paper Trading (Default)**
+- **Safe**: Uses testnet APIs, no real money
+- **Config**: `config/paper_trading_config.json`
+- **Risk**: Conservative settings (1% risk, 3x leverage)
+- **Use**: Testing strategies, learning, development
+
+### **💰 Live Trading**
+- **Real Money**: Uses mainnet APIs, real trading
+- **Config**: `config/live_trading_config.json`
+- **Risk**: More aggressive settings (2% risk, 5x leverage)
+- **Use**: Actual trading with real capital
+
+### **🔄 Switching Modes**
+
+```bash
+# Use paper trading mode
+aug --mode paper position analyze --symbol BTC/USDT
+
+# Use live trading mode (with warnings)
+aug --mode live position analyze --symbol BTC/USDT
+
+# Switch default configuration
+aug config switch --mode paper
+aug config switch --mode live
+```
+
 ## 🚀 Live Trading Commands
 
 ### `aug live monitor`
@@ -182,6 +212,20 @@ aug live monitor --symbols BTC/USDT ETH/USDT --duration 60
 # Quick price check
 aug live monitor --symbols DOGE/USDT --duration 10
 ```
+
+### `aug live secure`
+Secure API keys by moving them to environment variables.
+
+```bash
+# Secure API keys
+aug live secure
+```
+
+This command will:
+1. Extract API keys from config files
+2. Create a `.env` file with the keys
+3. Clean up config files to remove sensitive data
+4. Update `.gitignore` if needed
 
 ### `aug live test`
 Test live trading components.
@@ -233,6 +277,28 @@ aug config show
 aug config show --section risk
 aug config show --section data
 aug config show --section signals
+```
+
+### `aug config switch`
+Switch between paper and live trading configurations.
+
+```bash
+# Switch to paper trading (safe, testnet)
+aug config switch --mode paper
+
+# Switch to live trading (real money)
+aug config switch --mode live
+```
+
+### `aug config update`
+Update configuration settings.
+
+```bash
+# Update risk management settings
+aug config update --section risk_management --default-budget 1000 --max-risk-per-trade 0.01
+
+# Update multiple settings
+aug config update --section risk_management --default-leverage 5 --max-positions 3
 ```
 
 ### `aug config init`

@@ -219,8 +219,21 @@ class BinanceDataFeeder:
                 logger.warning("API credentials not configured for account info")
                 return None
             
+            # SAPI endpoints are not available in testnet
+            if self.exchange.sandbox:
+                logger.info("Using mock account service for testnet (SAPI endpoints not supported)")
+                from .mock_account_service import get_mock_account_service
+                mock_service = get_mock_account_service(balance=1000.0)
+                return mock_service.get_balance()
+            
             account_info = self.exchange.fetch_balance()
             return account_info
         except Exception as e:
-            logger.error(f"Error fetching account info: {e}")
-            return None
+            if "sapi" in str(e).lower():
+                logger.error("SAPI endpoints not available in testnet. Using mock data.")
+                from .mock_account_service import get_mock_account_service
+                mock_service = get_mock_account_service(balance=1000.0)
+                return mock_service.get_balance()
+            else:
+                logger.error(f"Error fetching account info: {e}")
+                return None

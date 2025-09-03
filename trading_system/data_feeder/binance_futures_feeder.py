@@ -209,11 +209,24 @@ class BinanceFuturesFeeder:
                 logger.warning("API credentials not configured for futures account info")
                 return None
             
+            # Futures testnet has limited SAPI support
+            if self.exchange.sandbox:
+                logger.info("Using mock account service for futures testnet")
+                from .mock_account_service import get_mock_account_service
+                mock_service = get_mock_account_service(balance=1000.0)
+                return mock_service.get_balance()
+            
             account_info = self.exchange.fetch_balance()
             return account_info
         except Exception as e:
-            logger.error(f"Error fetching futures account info: {e}")
-            return None
+            if "sapi" in str(e).lower():
+                logger.error("SAPI endpoints not available in testnet. Using mock data.")
+                from .mock_account_service import get_mock_account_service
+                mock_service = get_mock_account_service(balance=1000.0)
+                return mock_service.get_balance()
+            else:
+                logger.error(f"Error fetching futures account info: {e}")
+                return None
     
     def get_positions(self) -> List[Dict]:
         """Get current futures positions."""
