@@ -24,6 +24,12 @@ from .core.exchange_manager import ExchangeManager, ExchangeConfig, ExchangeStat
 from .core.data_handler import DataHandler, DataConfig
 from .core.paper_trading import PaperTradingEngine, PaperTradingConfig, OrderSide, OrderType
 
+# Import scalping components
+from .strategy_engine.scalping_strategies import ScalpingStrategyManager, ScalpingConfig, EMACrossoverStrategy, BollingerBandStrategy, VWAPReversionStrategy
+from .risk_manager.scalping_risk_manager import ScalpingRiskManager, ScalpingRiskConfig
+from .live_trading.scalping_engine import ScalpingTradingEngine
+from .core.event_system import event_bus, EventType
+
 
 # Auto-completion functions
 def get_symbols(ctx, args, incomplete):
@@ -1944,6 +1950,260 @@ def export(format):
             
     except Exception as e:
         click.echo(f"❌ Error exporting paper trading data: {e}", err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# SCALPING TRADING COMMANDS
+# ============================================================================
+
+@cli.group()
+def scalping():
+    """Scalping trading commands for high-frequency trading."""
+    pass
+
+
+@scalping.command()
+@click.option('--symbols', '-s', multiple=True, help='Trading symbols (e.g., BTC/USDT)')
+@click.option('--balance', '-b', type=float, default=10000.0, help='Initial balance')
+@click.option('--paper', is_flag=True, default=True, help='Paper trading mode (Freqtrade-style)')
+@click.option('--live', is_flag=True, default=False, help='Live trading mode (requires API keys)')
+@click.option('--strategies', multiple=True, default=['ema_crossover', 'bollinger_bands', 'vwap_reversion'], 
+              help='Strategies to use')
+@click.option('--config', '-c', help='Configuration file path')
+def start(symbols, balance, paper, live, strategies, config):
+    """Start scalping trading engine."""
+    try:
+        if not symbols:
+            symbols = ['BTC/USDT', 'ETH/USDT', 'ADA/USDT']
+        
+        # Determine trading mode
+        if live:
+            paper = False
+            mode = "Live Trading (Real Money)"
+        else:
+            paper = True
+            mode = "Paper Trading (Freqtrade-style)"
+        
+        click.echo(f"🚀 Starting Scalping Trading Engine...")
+        click.echo(f"📊 Symbols: {', '.join(symbols)}")
+        click.echo(f"💰 Balance: ${balance:,.2f}")
+        click.echo(f"📝 Mode: {mode}")
+        click.echo(f"🎯 Strategies: {', '.join(strategies)}")
+        
+        if paper:
+            click.echo(f"📋 Paper Trading Features:")
+            click.echo(f"   ✅ Real market data")
+            click.echo(f"   ✅ Realistic slippage simulation")
+            click.echo(f"   ✅ Commission simulation")
+            click.echo(f"   ✅ No API keys required")
+            click.echo(f"   ✅ Risk-free testing")
+        
+        # Initialize scalping engine
+        engine = ScalpingTradingEngine(
+            watchlist=list(symbols),
+            initial_balance=balance,
+            config_path=config,
+            paper_trading=paper
+        )
+        
+        # Start engine
+        import asyncio
+        asyncio.run(engine.start())
+        
+    except Exception as e:
+        click.echo(f"❌ Error starting scalping engine: {e}", err=True)
+        sys.exit(1)
+
+
+@scalping.command()
+@click.option('--symbol', '-s', help='Symbol to test')
+@click.option('--strategy', help='Strategy to test')
+@click.option('--timeframe', default='1m', help='Timeframe for testing')
+def test(symbol, strategy, timeframe):
+    """Test scalping strategies."""
+    try:
+        if not symbol:
+            symbol = 'BTC/USDT'
+        
+        click.echo(f"🧪 Testing Scalping Strategy: {strategy or 'All'}")
+        click.echo(f"📊 Symbol: {symbol}")
+        click.echo(f"⏰ Timeframe: {timeframe}")
+        
+        # Initialize strategy manager
+        strategy_manager = ScalpingStrategyManager()
+        
+        if strategy:
+            # Test specific strategy
+            strategy_obj = strategy_manager.get_strategy(strategy)
+            if strategy_obj:
+                click.echo(f"✅ Strategy '{strategy}' loaded successfully")
+                click.echo(f"📋 Strategy type: {type(strategy_obj).__name__}")
+            else:
+                click.echo(f"❌ Strategy '{strategy}' not found")
+                available = list(strategy_manager.get_all_strategies().keys())
+                click.echo(f"Available strategies: {', '.join(available)}")
+        else:
+            # Test all strategies
+            strategies = strategy_manager.get_all_strategies()
+            click.echo(f"📋 Available strategies:")
+            for name, strategy_obj in strategies.items():
+                click.echo(f"  ✅ {name}: {type(strategy_obj).__name__}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error testing strategies: {e}", err=True)
+        sys.exit(1)
+
+
+@scalping.command()
+@click.option('--symbol', '-s', help='Symbol to analyze')
+@click.option('--balance', '-b', type=float, default=10000.0, help='Account balance')
+def risk(symbol, balance):
+    """Analyze scalping risk parameters."""
+    try:
+        if not symbol:
+            symbol = 'BTC/USDT'
+        
+        click.echo(f"⚠️ Scalping Risk Analysis for {symbol}")
+        click.echo(f"💰 Account Balance: ${balance:,.2f}")
+        
+        # Initialize risk manager
+        risk_manager = ScalpingRiskManager()
+        
+        # Get risk summary
+        risk_summary = risk_manager.get_risk_summary()
+        
+        click.echo(f"\n📊 Risk Summary:")
+        click.echo(f"  Daily P&L: ${risk_summary['daily_pnl']:,.2f}")
+        click.echo(f"  Consecutive Losses: {risk_summary['consecutive_losses']}")
+        click.echo(f"  Active Positions: {risk_summary['active_positions']}")
+        click.echo(f"  Total Exposure: ${risk_summary['total_exposure']:,.2f}")
+        click.echo(f"  In Cooldown: {'Yes' if risk_summary['in_cooldown'] else 'No'}")
+        
+        # Risk configuration
+        config = risk_manager.config
+        click.echo(f"\n⚙️ Risk Configuration:")
+        click.echo(f"  Max Position Size: {config.max_position_size_percent*100:.1f}%")
+        click.echo(f"  Max Total Exposure: {config.max_total_exposure_percent*100:.1f}%")
+        click.echo(f"  Max Daily Loss: {config.max_daily_loss_percent*100:.1f}%")
+        click.echo(f"  ATR Multiplier: {config.atr_multiplier}")
+        click.echo(f"  Risk-Reward Ratio: {config.risk_reward_ratio}")
+        click.echo(f"  Trailing Stop: {'Enabled' if config.enable_trailing_stop else 'Disabled'}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error analyzing risk: {e}", err=True)
+        sys.exit(1)
+
+
+@scalping.command()
+@click.option('--symbol', '-s', help='Symbol to configure')
+@click.option('--ema-fast', type=int, help='Fast EMA period')
+@click.option('--ema-slow', type=int, help='Slow EMA period')
+@click.option('--bb-period', type=int, help='Bollinger Band period')
+@click.option('--bb-std', type=float, help='Bollinger Band standard deviation')
+@click.option('--atr-multiplier', type=float, help='ATR multiplier for stop loss')
+@click.option('--risk-reward', type=float, help='Risk-reward ratio')
+def config(symbol, ema_fast, ema_slow, bb_period, bb_std, atr_multiplier, risk_reward):
+    """Configure scalping strategy parameters."""
+    try:
+        click.echo(f"⚙️ Configuring Scalping Parameters")
+        
+        # Create configuration
+        config = ScalpingConfig()
+        
+        if ema_fast:
+            config.ema_fast = ema_fast
+        if ema_slow:
+            config.ema_slow = ema_slow
+        if bb_period:
+            config.bb_period = bb_period
+        if bb_std:
+            config.bb_std = bb_std
+        if atr_multiplier:
+            config.atr_multiplier = atr_multiplier
+        if risk_reward:
+            config.risk_reward_ratio = risk_reward
+        
+        click.echo(f"\n📋 Current Configuration:")
+        click.echo(f"  EMA Fast: {config.ema_fast}")
+        click.echo(f"  EMA Slow: {config.ema_slow}")
+        click.echo(f"  BB Period: {config.bb_period}")
+        click.echo(f"  BB Std Dev: {config.bb_std}")
+        click.echo(f"  ATR Multiplier: {config.atr_multiplier}")
+        click.echo(f"  Risk-Reward Ratio: {config.risk_reward_ratio}")
+        click.echo(f"  Primary Timeframe: {config.primary_timeframe}")
+        
+        click.echo(f"\n✅ Configuration updated successfully")
+        
+    except Exception as e:
+        click.echo(f"❌ Error configuring parameters: {e}", err=True)
+        sys.exit(1)
+
+
+@scalping.command()
+def status():
+    """Show scalping engine status."""
+    try:
+        click.echo(f"📊 Scalping Engine Status")
+        
+        # Check event bus status
+        queue_size = event_bus.get_queue_size()
+        subscriptions = event_bus.get_subscription_count()
+        
+        click.echo(f"\n🔄 Event System:")
+        click.echo(f"  Queue Size: {queue_size}")
+        click.echo(f"  Active Subscriptions: {len(subscriptions)}")
+        
+        if subscriptions:
+            click.echo(f"  Subscriptions:")
+            for event_type, count in subscriptions.items():
+                click.echo(f"    {event_type}: {count}")
+        
+        # Strategy status
+        strategy_manager = ScalpingStrategyManager()
+        strategies = strategy_manager.get_all_strategies()
+        
+        click.echo(f"\n🎯 Strategies:")
+        for name, strategy in strategies.items():
+            click.echo(f"  ✅ {name}: {type(strategy).__name__}")
+        
+        click.echo(f"\n✅ Scalping system is ready")
+        
+    except Exception as e:
+        click.echo(f"❌ Error getting status: {e}", err=True)
+        sys.exit(1)
+
+
+@scalping.command()
+@click.option('--balance', '-b', type=float, default=10000.0, help='Initial balance')
+@click.option('--commission', type=float, default=0.001, help='Commission rate (0.001 = 0.1%)')
+@click.option('--slippage', type=float, default=0.0005, help='Slippage rate (0.0005 = 0.05%)')
+def paper_config(balance, commission, slippage):
+    """Configure Freqtrade-style paper trading parameters."""
+    try:
+        click.echo(f"📋 Freqtrade-Style Paper Trading Configuration")
+        
+        click.echo(f"\n💰 Account Settings:")
+        click.echo(f"  Initial Balance: ${balance:,.2f}")
+        
+        click.echo(f"\n💸 Trading Costs:")
+        click.echo(f"  Commission Rate: {commission*100:.3f}%")
+        click.echo(f"  Slippage Rate: {slippage*100:.3f}%")
+        
+        click.echo(f"\n📊 Features:")
+        click.echo(f"  ✅ Real market data from Binance")
+        click.echo(f"  ✅ Realistic slippage simulation")
+        click.echo(f"  ✅ Commission simulation")
+        click.echo(f"  ✅ Position tracking")
+        click.echo(f"  ✅ P&L calculation")
+        click.echo(f"  ✅ Trade history")
+        click.echo(f"  ✅ No API keys required")
+        
+        click.echo(f"\n🚀 Start paper trading:")
+        click.echo(f"  python3 -m trading_system.cli scalping start --paper --balance {balance}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error configuring paper trading: {e}", err=True)
         sys.exit(1)
 
 

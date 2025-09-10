@@ -115,24 +115,71 @@ class BinanceFuturesFeeder:
             List of MarketData objects
         """
         try:
-            ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-            
-            market_data = []
-            for candle in ohlcv:
-                timestamp = datetime.fromtimestamp(candle[0] / 1000)
-                data = MarketData(
-                    symbol=symbol,
-                    timestamp=timestamp,
-                    open=float(candle[1]),
-                    high=float(candle[2]),
-                    low=float(candle[3]),
-                    close=float(candle[4]),
-                    volume=float(candle[5])
-                )
-                market_data.append(data)
-            
-            logger.info(f"Fetched {len(market_data)} futures candles for {symbol}")
-            return market_data
+            # For testnet, use direct API calls to avoid SAPI endpoint issues
+            if self.exchange.sandbox:
+                import requests
+                
+                # Convert symbol format (BTC/USDT:USDT -> BTCUSDT, BTCUSDT:USDT -> BTCUSDT)
+                clean_symbol = symbol.replace('/', '').replace(':USDT', '')
+                if not clean_symbol.endswith('USDT'):
+                    clean_symbol += 'USDT'
+                
+                # Map timeframe
+                interval_map = {
+                    '1m': '1m', '5m': '5m', '15m': '15m',
+                    '1h': '1h', '4h': '4h', '1d': '1d'
+                }
+                interval = interval_map.get(timeframe, '1m')
+                
+                # Make direct API call
+                url = f"https://testnet.binancefuture.com/fapi/v1/klines"
+                params = {
+                    'symbol': clean_symbol,
+                    'interval': interval,
+                    'limit': limit
+                }
+                
+                response = requests.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                
+                ohlcv_data = response.json()
+                
+                market_data = []
+                for candle in ohlcv_data:
+                    timestamp = datetime.fromtimestamp(int(candle[0]) / 1000)
+                    data = MarketData(
+                        symbol=symbol,
+                        timestamp=timestamp,
+                        open=float(candle[1]),
+                        high=float(candle[2]),
+                        low=float(candle[3]),
+                        close=float(candle[4]),
+                        volume=float(candle[5])
+                    )
+                    market_data.append(data)
+                
+                logger.info(f"Fetched {len(market_data)} futures candles for {symbol} via direct API")
+                return market_data
+            else:
+                # For mainnet, use CCXT
+                ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                
+                market_data = []
+                for candle in ohlcv:
+                    timestamp = datetime.fromtimestamp(candle[0] / 1000)
+                    data = MarketData(
+                        symbol=symbol,
+                        timestamp=timestamp,
+                        open=float(candle[1]),
+                        high=float(candle[2]),
+                        low=float(candle[3]),
+                        close=float(candle[4]),
+                        volume=float(candle[5])
+                    )
+                    market_data.append(data)
+                
+                logger.info(f"Fetched {len(market_data)} futures candles for {symbol}")
+                return market_data
             
         except Exception as e:
             logger.error(f"Error fetching futures OHLCV for {symbol}: {e}")

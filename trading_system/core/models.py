@@ -20,6 +20,7 @@ class StrategyType(Enum):
     MACD = "MACD"
     BOLLINGER_BANDS = "BOLLINGER_BANDS"
     SMA_CROSSOVER = "SMA_CROSSOVER"
+    SCALPING = "SCALPING"
 
 
 @dataclass
