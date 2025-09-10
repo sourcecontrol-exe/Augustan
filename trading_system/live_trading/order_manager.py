@@ -96,19 +96,22 @@ class OrderManager:
     6. Support multiple order types (market, limit, stop)
     """
     
-    def __init__(self, config_path: Optional[str] = None, testnet: bool = True):
+    def __init__(self, config_path: Optional[str] = None, testnet: bool = None):
         """
         Initialize Order Manager.
         
         Args:
             config_path: Path to configuration file
-            testnet: If True, use testnet for all orders
+            testnet: If True, use testnet for all orders (defaults to environment config)
         """
         self.config_path = config_path
-        self.testnet = testnet
         
-        # Initialize configuration
+        # Initialize configuration first
         self.config_manager = get_config_manager(config_path)
+        
+        # Use environment variables with fallbacks
+        self.testnet = testnet if testnet is not None else self.config_manager.get_environment_config().exchange.binance_testnet
+        
         self.exchanges_config = self.config_manager.get_all_exchange_configs()
         
         # Initialize exchange connections
@@ -149,10 +152,16 @@ class OrderManager:
                         'enableRateLimit': True,
                     }
                     
-                    # Add API credentials
-                    if 'api_key' in config:
+                    # Add API credentials from environment variables first, then config
+                    env_credentials = self.config_manager.get_exchange_credentials('binance')
+                    if env_credentials.get('api_key'):
+                        options['apiKey'] = env_credentials['api_key']
+                    elif 'api_key' in config:
                         options['apiKey'] = config['api_key']
-                    if 'secret' in config:
+                    
+                    if env_credentials.get('secret'):
+                        options['secret'] = env_credentials['secret']
+                    elif 'secret' in config:
                         options['secret'] = config['secret']
                     
                     # Configure testnet URLs if needed

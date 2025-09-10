@@ -1,6 +1,7 @@
 """
 Centralized Configuration Manager
 Provides singleton access to all application configuration.
+Now uses environment variables for secure configuration management.
 """
 import json
 import os
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from .position_sizing import RiskManagementConfig
+from .env_config import get_environment_config, EnvironmentConfig
 from ..config_loader import SecureConfigLoader
 
 
@@ -56,6 +58,9 @@ class ConfigManager:
     """
     Singleton configuration manager for the entire application.
     
+    Now uses environment variables for secure configuration management.
+    Falls back to JSON config files for backward compatibility.
+    
     This ensures consistent configuration across all components:
     - CLI commands
     - Background jobs
@@ -67,6 +72,7 @@ class ConfigManager:
     _instance: Optional['ConfigManager'] = None
     _config_data: Optional[Dict[str, Any]] = None
     _config_path: Optional[str] = None
+    _env_config: Optional[EnvironmentConfig] = None
     
     def __new__(cls, config_path: Optional[str] = None):
         if cls._instance is None:
@@ -76,6 +82,7 @@ class ConfigManager:
     def __init__(self, config_path: Optional[str] = None):
         if self._config_data is None:
             self._load_config(config_path)
+            self._load_environment_config()
     
     def _load_config(self, config_path: Optional[str] = None):
         """Load configuration from JSON file with environment variable override."""
@@ -96,6 +103,15 @@ class ConfigManager:
         except Exception as e:
             logger.warning(f"Error loading config: {e}. Using defaults.")
             self._config_data = self._get_default_config()
+    
+    def _load_environment_config(self):
+        """Load environment configuration."""
+        try:
+            self._env_config = get_environment_config()
+            logger.info(f"Environment configuration loaded: {self._env_config.environment}")
+        except Exception as e:
+            logger.warning(f"Error loading environment config: {e}. Using defaults.")
+            self._env_config = None
     
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration if file is missing or invalid."""
@@ -248,6 +264,96 @@ class ConfigManager:
         """Reset the singleton instance (useful for testing)."""
         cls._instance = None
         cls._config_data = None
+        cls._env_config = None
+    
+    # Environment-based configuration methods
+    def get_environment_config(self) -> Optional[EnvironmentConfig]:
+        """Get the environment configuration."""
+        return self._env_config
+    
+    def get_exchange_credentials(self, exchange_name: str) -> Dict[str, str]:
+        """Get exchange credentials from environment variables."""
+        if self._env_config:
+            return self._env_config.get_exchange_credentials(exchange_name)
+        return {}
+    
+    def is_paper_trading(self) -> bool:
+        """Check if paper trading is enabled via environment variables."""
+        if self._env_config:
+            return self._env_config.trading.paper_trading
+        return True  # Default to paper trading for safety
+    
+    def is_live_trading(self) -> bool:
+        """Check if live trading is enabled via environment variables."""
+        if self._env_config:
+            return self._env_config.trading.live_trading
+        return False  # Default to no live trading for safety
+    
+    def get_trading_symbols(self) -> list:
+        """Get trading symbols from environment variables."""
+        if self._env_config:
+            return self._env_config.trading.trading_symbols
+        return ['BTC/USDT', 'ETH/USDT']  # Default symbols
+    
+    def get_initial_balance(self) -> float:
+        """Get initial balance from environment variables."""
+        if self._env_config:
+            return self._env_config.trading.initial_balance
+        return 10000.0  # Default balance
+    
+    def get_max_risk_per_trade(self) -> float:
+        """Get max risk per trade from environment variables."""
+        if self._env_config:
+            return self._env_config.trading.max_risk_per_trade
+        return 0.01  # Default 1%
+    
+    def get_max_portfolio_risk(self) -> float:
+        """Get max portfolio risk from environment variables."""
+        if self._env_config:
+            return self._env_config.trading.max_portfolio_risk
+        return 0.1  # Default 10%
+    
+    def get_data_timeframes(self) -> list:
+        """Get data timeframes from environment variables."""
+        if self._env_config:
+            return self._env_config.data.data_timeframes
+        return ['1m', '3m', '5m']  # Default timeframes
+    
+    def get_log_level(self) -> str:
+        """Get log level from environment variables."""
+        if self._env_config:
+            return self._env_config.logging.log_level
+        return 'INFO'  # Default log level
+    
+    def get_database_config(self) -> Dict[str, Any]:
+        """Get database configuration from environment variables."""
+        if self._env_config:
+            db_config = self._env_config.database
+            return {
+                'type': db_config.database_type,
+                'sqlite_path': db_config.sqlite_path,
+                'postgresql_host': db_config.postgresql_host,
+                'postgresql_port': db_config.postgresql_port,
+                'postgresql_database': db_config.postgresql_database,
+                'postgresql_username': db_config.postgresql_username,
+                'postgresql_password': db_config.postgresql_password,
+                'mysql_host': db_config.mysql_host,
+                'mysql_port': db_config.mysql_port,
+                'mysql_database': db_config.mysql_database,
+                'mysql_username': db_config.mysql_username,
+                'mysql_password': db_config.mysql_password,
+            }
+        return {'type': 'sqlite', 'sqlite_path': './data/trading.db'}
+    
+    def validate_environment(self) -> bool:
+        """Validate environment configuration."""
+        if self._env_config:
+            return self._env_config.validate_configuration()['valid']
+        return True
+    
+    def reload_environment_config(self):
+        """Reload environment configuration."""
+        self._load_environment_config()
 
 
 # Global function for easy access

@@ -1,0 +1,194 @@
+# Augustan Trading System - Docker Ignore File
+# Excludes unnecessary files from Docker build context
+
+# ============================================================================
+# ENVIRONMENT AND CONFIGURATION
+# ============================================================================
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.production
+.env.staging
+.env.testing
+
+# Configuration files with secrets
+config/*.json
+config/*.yaml
+config/*.yml
+!config/exchanges_config.json.example
+
+# ============================================================================
+# DATA AND LOGS
+# ============================================================================
+
+# Data directories
+data/
+volume_data/
+logs/
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# ============================================================================
+# DEVELOPMENT FILES
+# ============================================================================
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python development
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ============================================================================
+# VERSION CONTROL
+# ============================================================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Other VCS
+.svn/
+.hg/
+.bzr/
+
+# ============================================================================
+# TESTING AND DOCUMENTATION
+# ============================================================================
+
+# Test files
+test_*.py
+*_test.py
+tests/
+.pytest_cache/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage.xml
+
+# ============================================================================
+# DEPLOYMENT AND CI/CD
+# ============================================================================
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Jenkinsfile
+
+# Deployment scripts
+deploy/
+deployment/
+scripts/
+
+# ============================================================================
+# TEMPORARY FILES
+# ============================================================================
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# ============================================================================
+# BUILD ARTIFACTS
+# ============================================================================
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Node.js (if any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================================
+# SECURITY AND SECRETS
+# ============================================================================
+
+# Secret files
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Certificate files
+*.crt
+*.cer
+*.der
+
+# ============================================================================
+# DOCKER SPECIFIC
+# ============================================================================
+
+# Docker files (except Dockerfile)
+docker-compose.override.yml
+docker-compose.prod.yml
+docker-compose.dev.yml
+
+# Docker volumes
+docker-volumes/
+
+# ============================================================================
+# NOTES
+# ============================================================================
+
+# This file ensures that:
+# 1. Secrets and sensitive data are not included in Docker images
+# 2. Development files and temporary data are excluded
+# 3. Build context is minimized for faster builds
+# 4. Security is maintained by excluding credential files

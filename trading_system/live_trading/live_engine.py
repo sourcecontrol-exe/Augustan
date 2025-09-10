@@ -32,23 +32,24 @@ class LiveTradingEngine:
     and making trading decisions based on configured strategies.
     """
     
-    def __init__(self, watchlist: List[str], initial_balance: float, 
-                 config_path: Optional[str] = None, paper_trading: bool = True):
+    def __init__(self, watchlist: List[str] = None, initial_balance: float = None, 
+                 config_path: Optional[str] = None, paper_trading: bool = None):
         """
         Initialize Live Trading Engine.
         
         Args:
-            watchlist: List of symbols to trade
-            initial_balance: Starting account balance
+            watchlist: List of symbols to trade (defaults to environment config)
+            initial_balance: Starting account balance (defaults to environment config)
             config_path: Configuration file path
-            paper_trading: If True, simulate trades without real execution
+            paper_trading: If True, simulate trades without real execution (defaults to environment config)
         """
-        self.watchlist = watchlist
-        self.initial_balance = initial_balance
-        self.paper_trading = paper_trading
-        
-        # Initialize configuration
+        # Initialize configuration first
         self.config_manager = get_config_manager(config_path)
+        
+        # Use environment variables with fallbacks
+        self.watchlist = watchlist or self.config_manager.get_trading_symbols()
+        self.initial_balance = initial_balance or self.config_manager.get_initial_balance()
+        self.paper_trading = paper_trading if paper_trading is not None else self.config_manager.is_paper_trading()
         self.signal_config = self.config_manager.get_signal_generation_config()
         
         # Initialize core components
