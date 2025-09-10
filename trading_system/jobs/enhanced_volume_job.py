@@ -58,7 +58,7 @@ class EnhancedVolumeJob(DailyVolumeJob):
             
             if not symbol_data:
                 logger.error("No symbol data available for position sizing")
-                return self._prepare_basic_analysis_results(all_metrics, rankings)
+                return super()._prepare_analysis_results(all_metrics, rankings)
             
             # Step 5: Run position sizing analysis
             logger.info("Running position sizing analysis...")
@@ -96,7 +96,7 @@ class EnhancedVolumeJob(DailyVolumeJob):
                                          position_results: List) -> Dict:
         """Prepare enhanced analysis results with position sizing data."""
         # Get basic results from parent class
-        basic_results = self._prepare_analysis_results(all_metrics, rankings)
+        basic_results = super()._prepare_analysis_results(all_metrics, rankings)
         
         # Add position sizing analysis
         tradeable_symbols = [r for r in position_results if r.is_tradeable]

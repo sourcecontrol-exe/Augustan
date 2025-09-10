@@ -56,33 +56,55 @@ class FuturesDataFeeder:
                 
                 # Add API keys if provided in config
                 options = exchange_config['options'].copy()
+                user_config = None
                 if exchange_type.value in config:
                     user_config = config[exchange_type.value]
-                    if 'api_key' in user_config:
-                        options['apiKey'] = user_config['api_key']
-                    if 'secret' in user_config:
-                        options['secret'] = user_config['secret']
-                    if 'password' in user_config:  # For OKX
-                        options['password'] = user_config['password']
-                    # Handle testnet configuration
-                    if user_config.get('testnet', False):
-                        options['sandbox'] = True
-                        options['sandboxMode'] = True
-                        if exchange_type == ExchangeType.BINANCE:
+                    
+                    # Handle nested structure for Binance (spot/futures)
+                    if exchange_type == ExchangeType.BINANCE and 'futures' in user_config:
+                        futures_config = user_config['futures']
+                        if 'api_key' in futures_config:
+                            options['apiKey'] = futures_config['api_key']
+                        if 'secret' in futures_config:
+                            options['secret'] = futures_config['secret']
+                        if futures_config.get('testnet', False):
+                            options['sandbox'] = True
+                            options['sandboxMode'] = True
                             options['urls'] = {
                                 'api': {
-                                    'public': 'https://testnet.binance.vision/api/v3',
-                                    'private': 'https://testnet.binance.vision/api/v3',
                                     'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
                                     'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
                                     'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
                                     'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
                                 }
                             }
+                    else:
+                        # Handle regular structure
+                        if 'api_key' in user_config:
+                            options['apiKey'] = user_config['api_key']
+                        if 'secret' in user_config:
+                            options['secret'] = user_config['secret']
+                        if 'password' in user_config:  # For OKX
+                            options['password'] = user_config['password']
+                        # Handle testnet configuration
+                        if user_config.get('testnet', False):
+                            options['sandbox'] = True
+                            options['sandboxMode'] = True
+                            if exchange_type == ExchangeType.BINANCE:
+                                options['urls'] = {
+                                    'api': {
+                                        'public': 'https://testnet.binance.vision/api/v3',
+                                        'private': 'https://testnet.binance.vision/api/v3',
+                                        'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                                        'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+                                        'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                        'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
+                                    }
+                                }
                 
                 exchange = exchange_config['class'](options)
                 # Disable currency fetching for testnet
-                if user_config.get('testnet', False):
+                if user_config and user_config.get('testnet', False):
                     exchange.options['fetchCurrencies'] = False
                 self.exchanges[exchange_type] = exchange
                 logger.info(f"Initialized {exchange_type.value} exchange")
@@ -199,7 +221,7 @@ class FuturesDataFeeder:
         """Get volume metrics from all available exchanges."""
         all_metrics = {}
         
-        with ThreadPoolExecutor(max_workers=len(self.exchanges)) as executor:
+        with ThreadPoolExecutor(max_workers=max(1, len(self.exchanges))) as executor:
             # Submit tasks for each exchange
             future_to_exchange = {
                 executor.submit(self.get_24h_volume_metrics, exchange_type): exchange_type

@@ -1,6 +1,30 @@
 # 🚀 Augustan Trading System
 
-The ultimate futures trading and position sizing tool with intelligent risk management, multi-exchange support, and automated signal generation.
+The ultimate futures trading and position sizing tool with intelligent risk management, multi-exchange support, automated signal generation, and comprehensive testing framework.
+
+## 📚 **Complete Documentation**
+
+For comprehensive documentation including core components, CLI commands, testing framework, and development guide, see:
+
+**[📖 AUGUSTAN_COMPLETE_GUIDE.md](AUGUSTAN_COMPLETE_GUIDE.md)**
+
+This guide covers everything you need to know about the Augustan Trading System.
+
+## 🚀 **Quick Start**
+
+```bash
+# Install everything
+pip install -r requirements.txt
+
+# Test installation
+python -m trading_system.cli --help
+
+# Run tests
+python run_tests.py
+
+# Start paper trading
+python -m trading_system.cli paper start --balance 10000
+```
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -66,7 +90,7 @@ aug position tradeable --budget 50
 
 ### 2. **Analyze Specific Symbol Position Sizing**
 ```bash
-aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 ```
 **Result**: Detailed position sizing analysis with safety metrics.
 
@@ -85,7 +109,7 @@ aug trading analyze --use-tradeable --budget 50
 ## 📊 **Real Example Output**
 
 ```bash
-$ aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+$ aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 
 📊 Position Sizing Analysis for DOGE/USDT
 ============================================================

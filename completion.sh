@@ -17,7 +17,7 @@ _aug_completion() {
     position_cmds="analyze tradeable"
     trading_cmds="analyze signals"
     job_cmds="start status"
-    live_cmds="monitor start test"
+    live_cmds="start monitor test"
     config_cmds="show init"
     
     # Common options
