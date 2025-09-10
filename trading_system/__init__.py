@@ -28,7 +28,7 @@ from .core.position_state import PositionState, EnhancedSignal, PositionManager
 
 from .data_feeder.futures_data_feeder import FuturesDataFeeder
 from .data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
-from .data_feeder.realtime_feeder import BinanceWebsocketFeeder, MultiExchangeRealtimeFeeder
+from .data_feeder.realtime_feeder import BinanceWebsocketFeeder, RealtimeFeeder, create_realtime_feeder
 
 from .risk_manager.risk_manager import RiskManager, RiskCalculationResult
 from .risk_manager.portfolio_manager import PortfolioManager, PortfolioMetrics
@@ -64,7 +64,8 @@ __all__ = [
     "FuturesDataFeeder",
     "ExchangeLimitsFetcher",
     "BinanceWebsocketFeeder",
-    "MultiExchangeRealtimeFeeder",
+    "RealtimeFeeder",
+    "create_realtime_feeder",
     
     # Risk management
     "RiskManager",

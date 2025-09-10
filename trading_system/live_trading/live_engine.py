@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Callable, Any
 from loguru import logger
 
-from ..data_feeder.realtime_feeder import MultiExchangeRealtimeFeeder, RealtimeCandle
+from ..data_feeder.realtime_feeder import RealtimeFeeder, RealtimeCandle, create_realtime_feeder
 from ..risk_manager.portfolio_manager import PortfolioManager
 from ..core.position_state import PositionManager, EnhancedSignal, SignalType, PositionState
 from ..core.config_manager import get_config_manager
@@ -52,7 +52,14 @@ class LiveTradingEngine:
         self.signal_config = self.config_manager.get_signal_generation_config()
         
         # Initialize core components
-        self.realtime_feeder = MultiExchangeRealtimeFeeder(watchlist, timeframe='1m')
+        # Create realtime config for first symbol in watchlist
+        realtime_config = {
+            "timeframes": ["1m"],
+            "symbol": watchlist[0] if watchlist else "BTCUSDT",
+            "exchange": "binance",
+            "max_lag_ms": 1500
+        }
+        self.realtime_feeder = create_realtime_feeder(realtime_config)
         self.portfolio_manager = PortfolioManager(initial_balance, config_path)
         self.signal_processor = LiveSignalProcessor(config_path)
         self.order_manager = OrderManager(config_path, testnet=paper_trading)
@@ -84,7 +91,7 @@ class LiveTradingEngine:
         self.is_running = True
         
         # Set up real-time data callback
-        self.realtime_feeder.add_price_callback(self._on_price_update)
+        self.realtime_feeder.add_event_callback(self._on_price_update)
         
         # Set up order manager callbacks
         self.order_manager.add_fill_callback(self._on_order_filled)

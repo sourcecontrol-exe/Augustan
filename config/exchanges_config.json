@@ -55,5 +55,11 @@
     "min_signal_strength": 0.7,
     "signal_cooldown_minutes": 30
   },
+  "realtime": {
+    "timeframes": ["1m", "3m"],
+    "symbol": "BTCUSDT",
+    "exchange": "binance",
+    "max_lag_ms": 1500
+  },
   "trading_mode": "paper"
 }
