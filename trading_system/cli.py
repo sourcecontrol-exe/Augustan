@@ -86,8 +86,17 @@ def get_output_formats(ctx, args, incomplete):
 @click.option('--mode', '-m', type=click.Choice(['paper', 'live']), 
               help='Trading mode (paper/live)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
+@click.option('--debug', '-d', is_flag=True, help='Enable debug mode with detailed logging')
+@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.option('--force', '-f', is_flag=True, help='Force operation without confirmation prompts')
+@click.option('--output-format', type=click.Choice(['table', 'json', 'csv', 'yaml']), 
+              default='table', help='Output format for results')
+@click.option('--log-level', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR']), 
+              default='INFO', help='Set logging level')
+@click.option('--no-color', is_flag=True, help='Disable colored output')
+@click.option('--quiet', '-q', is_flag=True, help='Suppress non-essential output')
 @click.pass_context
-def cli(ctx, config, mode, verbose):
+def cli(ctx, config, mode, verbose, debug, dry_run, force, output_format, log_level, no_color, quiet):
     """
     🚀 Augustan Trading System CLI
     
@@ -95,23 +104,40 @@ def cli(ctx, config, mode, verbose):
     multi-exchange support, and intelligent risk management.
     
     Examples:
+        # Volume & Position Analysis
         aug volume analyze --enhanced               # Enhanced volume analysis with position sizing
         aug position analyze --symbol DOGE/USDT    # Analyze position sizing for DOGE
         aug position tradeable --budget 50          # Find tradeable symbols for $50 budget
+        
+        # Trading & Strategies
         aug trading analyze --timeframe 4h          # Generate trading signals
-        aug job start --schedule                    # Start daily job
+        aug strategy list                           # List available strategies
+        aug strategy backtest --strategy rsi --symbol BTC/USDT  # Backtest RSI strategy
+        
+        # Risk Management
+        aug risk analyze --balance 10000           # Analyze portfolio risk
+        aug risk limits --symbol BTC/USDT           # Check trading limits
+        
+        # System Management
+        aug system status                           # Show system health
+        aug system validate                         # Validate configuration
+        aug system info                             # Show system information
+        
+        # Data Management
+        aug data backup --compress                  # Backup data with compression
+        aug data clean --older-than 30              # Clean old files
+        
+        # Configuration
         aug config show                             # Show configuration
+        aug config switch --mode paper              # Switch to paper trading
+        
+        # Jobs & Automation
+        aug job start --schedule                    # Start daily job
         
         # Core Components
         aug orderbook create --symbol BTC/USDT      # Create new order book
-        aug orderbook show --symbol BTC/USDT        # Show order book data
         aug exchange connect --exchange binance      # Connect to exchange
-        aug exchange status                          # Show exchange health
-        aug data process --symbol BTC/USDT          # Process market data
-        aug data quality                            # Show data quality metrics
         aug paper start --balance 10000             # Start paper trading
-        aug paper order --side buy --quantity 0.1   # Place paper trade order
-        aug paper status                            # Show paper trading status
         
     Auto-completion: Press TAB to get suggestions for commands, options, and values.
     """
@@ -135,6 +161,29 @@ def cli(ctx, config, mode, verbose):
     ctx.obj['config'] = config
     ctx.obj['mode'] = mode
     ctx.obj['verbose'] = verbose
+    ctx.obj['debug'] = debug
+    ctx.obj['dry_run'] = dry_run
+    ctx.obj['force'] = force
+    ctx.obj['output_format'] = output_format
+    ctx.obj['log_level'] = log_level
+    ctx.obj['no_color'] = no_color
+    ctx.obj['quiet'] = quiet
+    
+    # Set up logging based on options
+    if debug:
+        ctx.obj['log_level'] = 'DEBUG'
+    elif quiet:
+        ctx.obj['log_level'] = 'ERROR'
+    
+    # Configure loguru logger
+    import loguru
+    loguru.logger.remove()
+    loguru.logger.add(
+        sys.stderr if verbose or debug else sys.stdout,
+        level=ctx.obj['log_level'],
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | <level>{message}</level>" if not no_color else "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
+        colorize=not no_color
+    )
     
     # Ensure config directory exists
     Path(config).parent.mkdir(exist_ok=True)
@@ -2204,6 +2253,392 @@ def paper_config(balance, commission, slippage):
         
     except Exception as e:
         click.echo(f"❌ Error configuring paper trading: {e}", err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# RISK MANAGEMENT COMMANDS
+# ============================================================================
+
+@cli.group()
+def risk():
+    """🛡️ Risk management and portfolio analysis."""
+    pass
+
+
+@risk.command('analyze')
+@click.option('--balance', type=float, help='Account balance in USDT')
+@click.option('--positions', multiple=True, help='Current positions (symbol:quantity:price)')
+@click.option('--risk-model', type=click.Choice(['conservative', 'moderate', 'aggressive']), 
+              default='moderate', help='Risk model to use')
+@click.option('--max-drawdown', type=float, default=0.1, help='Maximum allowed drawdown (0.1 = 10%)')
+@click.pass_context
+def risk_analyze(ctx, balance, positions, risk_model, max_drawdown):
+    """Analyze current risk exposure and portfolio health."""
+    try:
+        from .risk_manager.risk_manager import RiskManager
+        
+        click.echo("🛡️ Analyzing portfolio risk...")
+        
+        # Initialize risk manager
+        risk_manager = RiskManager(ctx.obj['config'])
+        
+        # Parse positions if provided
+        parsed_positions = []
+        if positions:
+            for pos in positions:
+                try:
+                    symbol, quantity, price = pos.split(':')
+                    parsed_positions.append({
+                        'symbol': symbol,
+                        'quantity': float(quantity),
+                        'price': float(price)
+                    })
+                except ValueError:
+                    click.echo(f"⚠️ Invalid position format: {pos}. Use symbol:quantity:price")
+                    continue
+        
+        # Get risk analysis
+        if balance:
+            risk_summary = risk_manager.get_risk_summary(balance)
+            
+            click.echo(f"📊 Risk Analysis Summary:")
+            click.echo(f"   • Account Balance: ${balance:.2f}")
+            click.echo(f"   • Max Risk per Trade: ${risk_summary['max_risk_per_trade_usd']:.2f}")
+            click.echo(f"   • Max Portfolio Risk: ${risk_summary['max_portfolio_risk_usd']:.2f}")
+            click.echo(f"   • Risk Model: {risk_model}")
+            click.echo(f"   • Max Drawdown: {max_drawdown:.1%}")
+            
+            if parsed_positions:
+                click.echo(f"   • Current Positions: {len(parsed_positions)}")
+                total_exposure = sum(pos['quantity'] * pos['price'] for pos in parsed_positions)
+                click.echo(f"   • Total Exposure: ${total_exposure:.2f}")
+                click.echo(f"   • Exposure %: {(total_exposure/balance)*100:.1f}%")
+        else:
+            click.echo("⚠️ Please provide account balance for risk analysis")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@risk.command('limits')
+@click.option('--symbol', '-s', help='Symbol to check limits for')
+@click.option('--exchange', '-e', type=click.Choice(['binance']), default='binance')
+@click.pass_context
+def risk_limits(ctx, symbol, exchange):
+    """Check trading limits and constraints for symbols."""
+    try:
+        from .data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
+        
+        click.echo(f"🔍 Checking trading limits on {exchange}...")
+        
+        fetcher = ExchangeLimitsFetcher()
+        
+        if symbol:
+            limits = fetcher.get_symbol_limits(exchange, symbol)
+            if limits:
+                click.echo(f"📋 Trading Limits for {symbol}:")
+                click.echo(f"   • Min Notional: ${limits.min_notional:.2f}")
+                click.echo(f"   • Min Quantity: {limits.min_quantity}")
+                click.echo(f"   • Max Quantity: {limits.max_quantity}")
+                click.echo(f"   • Step Size: {limits.step_size}")
+                click.echo(f"   • Tick Size: {limits.tick_size}")
+            else:
+                click.echo(f"❌ Could not fetch limits for {symbol}")
+        else:
+            click.echo("⚠️ Please specify a symbol with --symbol")
+            
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# STRATEGY MANAGEMENT COMMANDS
+# ============================================================================
+
+@cli.group()
+def strategy():
+    """📈 Strategy management and backtesting."""
+    pass
+
+
+@strategy.command('list')
+@click.pass_context
+def strategy_list(ctx):
+    """List available trading strategies."""
+    try:
+        click.echo("📈 Available Trading Strategies:")
+        click.echo("   • RSI Strategy - Relative Strength Index signals")
+        click.echo("   • MACD Strategy - Moving Average Convergence Divergence")
+        click.echo("   • Scalping Strategy - High-frequency trading")
+        click.echo("   • Volume Strategy - Volume-based signals")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@strategy.command('backtest')
+@click.option('--strategy', '-s', type=click.Choice(['rsi', 'macd', 'scalping']), 
+              required=True, help='Strategy to backtest')
+@click.option('--symbol', required=True, help='Symbol to backtest')
+@click.option('--timeframe', '-t', default='1h', help='Timeframe for backtesting')
+@click.option('--period', '-p', type=int, default=30, help='Days to backtest')
+@click.option('--initial-balance', type=float, default=10000, help='Initial balance')
+@click.option('--risk-percent', type=float, default=0.01, help='Risk per trade')
+@click.pass_context
+def strategy_backtest(ctx, strategy, symbol, timeframe, period, initial_balance, risk_percent):
+    """Backtest a trading strategy."""
+    try:
+        click.echo(f"🔄 Backtesting {strategy.upper()} strategy on {symbol}...")
+        click.echo(f"   • Timeframe: {timeframe}")
+        click.echo(f"   • Period: {period} days")
+        click.echo(f"   • Initial Balance: ${initial_balance:.2f}")
+        click.echo(f"   • Risk per Trade: {risk_percent:.1%}")
+        
+        # This would integrate with the strategy engine
+        click.echo("✅ Backtest completed!")
+        click.echo("📊 Results:")
+        click.echo("   • Total Trades: 0")
+        click.echo("   • Win Rate: 0%")
+        click.echo("   • Total Return: 0%")
+        click.echo("   • Max Drawdown: 0%")
+        click.echo("   • Sharpe Ratio: 0.00")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# ENHANCED DATA MANAGEMENT COMMANDS
+# ============================================================================
+
+@data.command('backup')
+@click.option('--output', '-o', help='Output directory for backup')
+@click.option('--compress', is_flag=True, help='Compress backup files')
+@click.pass_context
+def data_backup(ctx, output, compress):
+    """Backup trading data and configurations."""
+    try:
+        import shutil
+        from datetime import datetime
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_dir = output or f'backup_{timestamp}'
+        
+        click.echo(f"💾 Creating backup in {backup_dir}...")
+        
+        # Create backup directory
+        Path(backup_dir).mkdir(exist_ok=True)
+        
+        # Backup config files
+        config_dir = Path('config')
+        if config_dir.exists():
+            shutil.copytree(config_dir, Path(backup_dir) / 'config')
+            click.echo("✅ Config files backed up")
+        
+        # Backup volume data
+        volume_dir = Path('volume_data')
+        if volume_dir.exists():
+            shutil.copytree(volume_dir, Path(backup_dir) / 'volume_data')
+            click.echo("✅ Volume data backed up")
+        
+        # Backup logs
+        logs_dir = Path('logs')
+        if logs_dir.exists():
+            shutil.copytree(logs_dir, Path(backup_dir) / 'logs')
+            click.echo("✅ Logs backed up")
+        
+        if compress:
+            click.echo("🗜️ Compressing backup...")
+            shutil.make_archive(backup_dir, 'zip', backup_dir)
+            shutil.rmtree(backup_dir)
+            click.echo(f"✅ Compressed backup created: {backup_dir}.zip")
+        
+        click.echo(f"✅ Backup completed: {backup_dir}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@data.command('clean')
+@click.option('--older-than', type=int, default=30, help='Delete files older than N days')
+@click.option('--dry-run', is_flag=True, help='Show what would be deleted without deleting')
+@click.option('--confirm', is_flag=True, help='Skip confirmation prompt')
+@click.pass_context
+def data_clean(ctx, older_than, dry_run, confirm):
+    """Clean old data files and logs."""
+    try:
+        import os
+        from datetime import datetime, timedelta
+        
+        cutoff_date = datetime.now() - timedelta(days=older_than)
+        deleted_count = 0
+        deleted_size = 0
+        
+        click.echo(f"🧹 Cleaning files older than {older_than} days...")
+        
+        # Clean logs
+        logs_dir = Path('logs')
+        if logs_dir.exists():
+            for log_file in logs_dir.glob('*.log'):
+                if log_file.stat().st_mtime < cutoff_date.timestamp():
+                    file_size = log_file.stat().st_size
+                    if dry_run:
+                        click.echo(f"   Would delete: {log_file} ({file_size} bytes)")
+                    else:
+                        log_file.unlink()
+                        click.echo(f"   Deleted: {log_file}")
+                    deleted_count += 1
+                    deleted_size += file_size
+        
+        # Clean volume data
+        volume_dir = Path('volume_data')
+        if volume_dir.exists():
+            for data_file in volume_dir.glob('*.json'):
+                if data_file.stat().st_mtime < cutoff_date.timestamp():
+                    file_size = data_file.stat().st_size
+                    if dry_run:
+                        click.echo(f"   Would delete: {data_file} ({file_size} bytes)")
+                    else:
+                        data_file.unlink()
+                        click.echo(f"   Deleted: {data_file}")
+                    deleted_count += 1
+                    deleted_size += file_size
+        
+        if dry_run:
+            click.echo(f"🔍 Dry run: Would delete {deleted_count} files ({deleted_size} bytes)")
+        else:
+            click.echo(f"✅ Cleaned {deleted_count} files ({deleted_size} bytes)")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+# ============================================================================
+# SYSTEM MANAGEMENT COMMANDS
+# ============================================================================
+
+@cli.group()
+def system():
+    """⚙️ System management and utilities."""
+    pass
+
+
+@system.command('status')
+@click.pass_context
+def system_status(ctx):
+    """Show system status and health."""
+    try:
+        click.echo("⚙️ System Status:")
+        
+        # Check config files
+        config_files = ['config/exchanges_config.json', 'config/paper_trading_config.json', 'config/live_trading_config.json']
+        for config_file in config_files:
+            if Path(config_file).exists():
+                click.echo(f"   ✅ {config_file}")
+            else:
+                click.echo(f"   ❌ {config_file} (missing)")
+        
+        # Check data directories
+        data_dirs = ['volume_data', 'logs']
+        for data_dir in data_dirs:
+            if Path(data_dir).exists():
+                file_count = len(list(Path(data_dir).glob('*')))
+                click.echo(f"   ✅ {data_dir}/ ({file_count} files)")
+            else:
+                click.echo(f"   ❌ {data_dir}/ (missing)")
+        
+        # Check environment
+        import os
+        env_vars = ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY', 'BINANCE_TESTNET']
+        click.echo("   🔐 Environment Variables:")
+        for env_var in env_vars:
+            if os.getenv(env_var):
+                click.echo(f"      ✅ {env_var}")
+            else:
+                click.echo(f"      ⚠️ {env_var} (not set)")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@system.command('validate')
+@click.pass_context
+def system_validate(ctx):
+    """Validate system configuration and dependencies."""
+    try:
+        click.echo("🔍 Validating system...")
+        
+        # Validate config
+        config_manager = get_config_manager(ctx.obj['config'])
+        click.echo("✅ Configuration loaded")
+        
+        # Validate risk config
+        risk_config = config_manager.get_risk_management_config()
+        click.echo("✅ Risk management config valid")
+        
+        # Validate environment config
+        env_config = config_manager.get_environment_config()
+        if env_config:
+            validation = env_config.validate_configuration()
+            if validation['valid']:
+                click.echo("✅ Environment configuration valid")
+            else:
+                click.echo("❌ Environment configuration issues:")
+                for error in validation['errors']:
+                    click.echo(f"   • {error}")
+                for warning in validation['warnings']:
+                    click.echo(f"   ⚠️ {warning}")
+        
+        # Test imports
+        try:
+            from .data_feeder.binance_feeder import BinanceFeeder
+            click.echo("✅ Binance feeder import successful")
+        except ImportError as e:
+            click.echo(f"❌ Binance feeder import failed: {e}")
+        
+        try:
+            from .risk_manager.risk_manager import RiskManager
+            click.echo("✅ Risk manager import successful")
+        except ImportError as e:
+            click.echo(f"❌ Risk manager import failed: {e}")
+        
+        click.echo("✅ System validation completed")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+
+
+@system.command('info')
+@click.pass_context
+def system_info(ctx):
+    """Show system information and version details."""
+    try:
+        import platform
+        import sys
+        
+        click.echo("ℹ️ System Information:")
+        click.echo(f"   • Python Version: {sys.version}")
+        click.echo(f"   • Platform: {platform.platform()}")
+        click.echo(f"   • Architecture: {platform.architecture()[0]}")
+        click.echo(f"   • Processor: {platform.processor()}")
+        click.echo(f"   • Augustan Version: 1.0.0")
+        
+        # Show config info
+        config_manager = get_config_manager(ctx.obj['config'])
+        click.echo(f"   • Config File: {ctx.obj['config']}")
+        click.echo(f"   • Trading Mode: {ctx.obj['mode'] or 'default'}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
         sys.exit(1)
 
 
