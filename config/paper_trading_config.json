@@ -28,7 +28,7 @@
     "output_directory": "volume_data"
   },
   "risk_management": {
-    "default_budget": 1000.0,
+    "default_budget": 100.0,
     "max_risk_per_trade": 0.01,
     "min_safety_ratio": 2.0,
     "default_leverage": 3,
@@ -39,7 +39,7 @@
     "emergency_stop_loss": 5.0
   },
   "data_fetching": {
-    "max_retries": 3,
+    "max_retries": 4,
     "retry_delay": 1.0,
     "backoff_multiplier": 2.0,
     "timeout_seconds": 30,

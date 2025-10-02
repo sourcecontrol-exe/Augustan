@@ -1245,7 +1245,7 @@ def live_monitor(ctx, symbols, duration):
         aug live monitor --symbols DOGE/USDT
     """
     try:
-        from .data_feeder.realtime_feeder import BinanceWebsocketFeeder
+        from .data_feeder.realtime_feeder import RealtimeConfig, create_realtime_feeder
         
         # Default symbols if none provided
         watchlist = list(symbols) if symbols else ['BTC/USDT', 'ETH/USDT', 'DOGE/USDT']
@@ -1254,7 +1254,12 @@ def live_monitor(ctx, symbols, duration):
         click.echo(f"📊 Symbols: {', '.join(watchlist)}")
         click.echo(f"⏱️ Duration: {duration} seconds")
         
-        feeder = BinanceWebsocketFeeder(watchlist, timeframe='1m', stream_type='ticker')
+        config_dict = {
+            'timeframes': ['1m'],
+            'symbol': watchlist[0].replace('/', ''),
+            'exchange': 'binance'
+        }
+        feeder = create_realtime_feeder(config_dict)
         
         # Track message count
         message_count = 0
@@ -1322,8 +1327,9 @@ def live_test(ctx):
         
         # Test WebSocket connection (brief test)
         click.echo("📡 Testing WebSocket connection...")
-        from .data_feeder.realtime_feeder import BinanceWebsocketFeeder
-        feeder = BinanceWebsocketFeeder(['BTC/USDT'], timeframe='1m', stream_type='ticker')
+        from .data_feeder.realtime_feeder import BinanceWebsocketFeeder, RealtimeConfig
+        config = RealtimeConfig(timeframes=['1m'], symbol='BTCUSDT', exchange='binance')
+        feeder = BinanceWebsocketFeeder(config)
         
         connection_test_duration = 10
         click.echo(f"  Connecting for {connection_test_duration} seconds...")
@@ -1906,14 +1912,15 @@ def order(symbol, side, quantity, price, order_type):
         side_enum = OrderSide.BUY if side == 'buy' else OrderSide.SELL
         type_enum = OrderType.MARKET if order_type == 'market' else OrderType.LIMIT
         
-        # Place order
-        order = engine.place_order(
+        # Place order (run async function)
+        import asyncio
+        order = asyncio.run(engine.place_order(
             symbol=symbol,
             side=side_enum,
             order_type=type_enum,
             quantity=quantity,
             price=price
-        )
+        ))
         
         if order:
             click.echo(f"✅ Order placed successfully")

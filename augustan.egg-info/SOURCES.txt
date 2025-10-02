@@ -60,5 +60,7 @@ trading_system/strategy_engine/macd_strategy.py
 trading_system/strategy_engine/rsi_strategy.py
 trading_system/strategy_engine/scalping_strategies.py
 trading_system/strategy_engine/strategy_engine.py
+volume_data/enhanced_volume_analysis_20251002_221058.json
+volume_data/enhanced_volume_analysis_20251002_221205.json
 volume_data/latest_enhanced_analysis.json
 volume_data/latest_volume_analysis.json

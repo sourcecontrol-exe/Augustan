@@ -120,9 +120,8 @@ class LiveTradingEngine:
         logger.info("🛑 Stopping Live Trading Engine...")
         self.is_running = False
         
-        # Stop real-time feeds with cleanup
+        # Stop real-time feeds
         self.realtime_feeder.stop()
-        self.realtime_feeder.cleanup()
         
         # Stop order monitoring
         self.order_manager.stop_order_monitoring()
@@ -133,19 +132,22 @@ class LiveTradingEngine:
         
         logger.info("✅ Live Trading Engine stopped")
     
-    def _on_price_update(self, symbol: str, candle: RealtimeCandle):
+    def _on_price_update(self, event):
         """
         Handle real-time price updates.
         
         This is called every time a new candlestick is received from the WebSocket.
         """
+        # Extract symbol and candle from the event
+        candle = event.data
+        symbol = candle.symbol
         try:
             # Check if we should process signals for this symbol
             if not self._should_process_signal(symbol):
                 return
             
             # Get recent data for signal generation
-            recent_data = self.realtime_feeder.get_recent_data(symbol, count=100)
+            recent_data = self.realtime_feeder.get_recent_data(symbol, candle.timeframe, count=100)
             if recent_data.empty:
                 return
             

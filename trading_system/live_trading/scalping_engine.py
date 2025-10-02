@@ -48,7 +48,7 @@ class ScalpingTradingEngine(EventHandler):
         
         # Initialize components
         self.realtime_feeder = None
-        self.risk_manager = ScalpingRiskManager(config_path=config_path)
+        self.risk_manager = ScalpingRiskManager()
         self.strategy_manager = ScalpingStrategyManager()
         
         # Use Freqtrade paper engine for paper trading
@@ -106,7 +106,7 @@ class ScalpingTradingEngine(EventHandler):
             self.realtime_feeder = create_realtime_feeder(
                 symbols=self.watchlist,
                 timeframes=['1m', '3m', '5m'],  # Scalping timeframes
-                config_path=self.config_manager.config_path
+                config_path=None  # Use default config
             )
             
             # Start realtime feeder
