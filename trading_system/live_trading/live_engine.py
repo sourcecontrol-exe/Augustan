@@ -32,23 +32,24 @@ class LiveTradingEngine:
     and making trading decisions based on configured strategies.
     """
     
-    def __init__(self, watchlist: List[str], initial_balance: float, 
-                 config_path: Optional[str] = None, paper_trading: bool = True):
+    def __init__(self, watchlist: List[str] = None, initial_balance: float = None, 
+                 config_path: Optional[str] = None, paper_trading: bool = None):
         """
         Initialize Live Trading Engine.
         
         Args:
-            watchlist: List of symbols to trade
-            initial_balance: Starting account balance
+            watchlist: List of symbols to trade (defaults to environment config)
+            initial_balance: Starting account balance (defaults to environment config)
             config_path: Configuration file path
-            paper_trading: If True, simulate trades without real execution
+            paper_trading: If True, simulate trades without real execution (defaults to environment config)
         """
-        self.watchlist = watchlist
-        self.initial_balance = initial_balance
-        self.paper_trading = paper_trading
-        
-        # Initialize configuration
+        # Initialize configuration first
         self.config_manager = get_config_manager(config_path)
+        
+        # Use environment variables with fallbacks
+        self.watchlist = watchlist or self.config_manager.get_trading_symbols()
+        self.initial_balance = initial_balance or self.config_manager.get_initial_balance()
+        self.paper_trading = paper_trading if paper_trading is not None else self.config_manager.is_paper_trading()
         self.signal_config = self.config_manager.get_signal_generation_config()
         
         # Initialize core components
@@ -119,9 +120,8 @@ class LiveTradingEngine:
         logger.info("🛑 Stopping Live Trading Engine...")
         self.is_running = False
         
-        # Stop real-time feeds with cleanup
+        # Stop real-time feeds
         self.realtime_feeder.stop()
-        self.realtime_feeder.cleanup()
         
         # Stop order monitoring
         self.order_manager.stop_order_monitoring()
@@ -132,19 +132,22 @@ class LiveTradingEngine:
         
         logger.info("✅ Live Trading Engine stopped")
     
-    def _on_price_update(self, symbol: str, candle: RealtimeCandle):
+    def _on_price_update(self, event):
         """
         Handle real-time price updates.
         
         This is called every time a new candlestick is received from the WebSocket.
         """
+        # Extract symbol and candle from the event
+        candle = event.data
+        symbol = candle.symbol
         try:
             # Check if we should process signals for this symbol
             if not self._should_process_signal(symbol):
                 return
             
             # Get recent data for signal generation
-            recent_data = self.realtime_feeder.get_recent_data(symbol, count=100)
+            recent_data = self.realtime_feeder.get_recent_data(symbol, candle.timeframe, count=100)
             if recent_data.empty:
                 return
             
@@ -220,7 +223,7 @@ class LiveTradingEngine:
     
     def _execute_trade(self, risk_result) -> bool:
         """
-        Execute a trade using OrderManager.
+        Execute a trade using OrderManager with enhanced error handling and retry logic.
         
         Args:
             risk_result: Risk calculation result
@@ -228,40 +231,105 @@ class LiveTradingEngine:
         Returns:
             True if trade executed successfully
         """
+        max_retries = 3
+        retry_delay = 1.0  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # Create order request with enhanced parameters
+                order_request = OrderRequest(
+                    symbol=risk_result.signal.symbol,
+                    side='buy' if risk_result.signal.signal_type == SignalType.LONG else 'sell',
+                    order_type=OrderType.MARKET,  # Use market orders for immediate execution
+                    quantity=risk_result.position_size,
+                    leverage=risk_result.leverage,
+                    test=self.paper_trading,
+                    client_order_id=f"{risk_result.signal.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{attempt}"
+                )
+                
+                # Add stop loss and take profit if available
+                if hasattr(risk_result, 'stop_loss_price') and risk_result.stop_loss_price:
+                    order_request.stop_loss_price = risk_result.stop_loss_price
+                
+                if hasattr(risk_result, 'take_profit_price') and risk_result.take_profit_price:
+                    order_request.take_profit_price = risk_result.take_profit_price
+                
+                # Place order through OrderManager
+                order_result = self.order_manager.place_order(order_request)
+                
+                if order_result.success:
+                    logger.info(f"✅ ORDER PLACED: {risk_result.signal.symbol} "
+                               f"{risk_result.signal.signal_type.value} - "
+                               f"Size: {risk_result.position_size:.6f}, "
+                               f"Value: ${risk_result.position_value:.2f} "
+                               f"(Order ID: {order_result.order_id}, Attempt: {attempt + 1})")
+                    
+                    # Update portfolio state immediately for paper trading
+                    if self.paper_trading:
+                        self.portfolio_manager.execute_trade(risk_result)
+                    
+                    # Track successful trade
+                    self._track_trade_execution(risk_result, order_result)
+                    
+                    return True
+                else:
+                    logger.warning(f"⚠️ ORDER FAILED (Attempt {attempt + 1}/{max_retries}): "
+                                  f"{risk_result.signal.symbol} - {order_result.error_message}")
+                    
+                    # Retry logic
+                    if attempt < max_retries - 1:
+                        logger.info(f"Retrying order in {retry_delay} seconds...")
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        logger.error(f"❌ ORDER FAILED AFTER {max_retries} ATTEMPTS: "
+                                    f"{risk_result.signal.symbol} - {order_result.error_message}")
+                        return False
+                        
+            except Exception as e:
+                logger.error(f"Error executing trade (Attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                else:
+                    return False
+        
+        return False
+    
+    def _track_trade_execution(self, risk_result, order_result):
+        """Track trade execution for analytics and monitoring."""
         try:
-            # Create order request
-            order_request = OrderRequest(
-                symbol=risk_result.signal.symbol,
-                side='buy' if risk_result.signal.signal_type == SignalType.LONG else 'sell',
-                order_type=OrderType.MARKET,  # Use market orders for immediate execution
-                quantity=risk_result.position_size,
-                leverage=risk_result.leverage,
-                test=self.paper_trading
-            )
+            trade_record = {
+                'timestamp': datetime.now().isoformat(),
+                'symbol': risk_result.signal.symbol,
+                'signal_type': risk_result.signal.signal_type.value,
+                'signal_confidence': risk_result.signal.confidence,
+                'position_size': risk_result.position_size,
+                'position_value': risk_result.position_value,
+                'risk_amount': risk_result.risk_amount,
+                'leverage': risk_result.leverage,
+                'order_id': order_result.order_id,
+                'order_status': order_result.status.value,
+                'filled_quantity': order_result.filled_quantity,
+                'average_price': order_result.average_price,
+                'commission': order_result.commission,
+                'paper_trading': self.paper_trading,
+                'execution_time_ms': (datetime.now() - risk_result.signal.timestamp).total_seconds() * 1000
+            }
             
-            # Place order through OrderManager
-            order_result = self.order_manager.place_order(order_request)
+            # Store trade record (could be saved to database in production)
+            if not hasattr(self, 'trade_records'):
+                self.trade_records = []
+            self.trade_records.append(trade_record)
             
-            if order_result.success:
-                logger.info(f"✅ ORDER PLACED: {risk_result.signal.symbol} "
-                           f"{risk_result.signal.signal_type.value} - "
-                           f"Size: {risk_result.position_size:.6f}, "
-                           f"Value: ${risk_result.position_value:.2f} "
-                           f"(Order ID: {order_result.order_id})")
-                
-                # Update portfolio state immediately for paper trading
-                if self.paper_trading:
-                    self.portfolio_manager.execute_trade(risk_result)
-                
-                return True
-            else:
-                logger.error(f"❌ ORDER FAILED: {risk_result.signal.symbol} - "
-                            f"{order_result.error_message}")
-                return False
-                
+            logger.debug(f"Trade execution tracked: {trade_record}")
+            
         except Exception as e:
-            logger.error(f"Error executing trade: {e}")
-            return False
+            logger.error(f"Error tracking trade execution: {e}")
     
     def _monitoring_loop(self):
         """Background monitoring loop for portfolio health and risk management."""
@@ -299,7 +367,7 @@ class LiveTradingEngine:
     
     def _on_order_filled(self, order_id: str, order_result):
         """
-        Handle order fill events from OrderManager.
+        Handle order fill events from OrderManager with enhanced portfolio synchronization.
         
         Args:
             order_id: Order ID that was filled
@@ -317,13 +385,32 @@ class LiveTradingEngine:
             
             logger.info(f"🎯 ORDER FILLED: {symbol} - "
                        f"Quantity: {order_result.filled_quantity}, "
-                       f"Price: ${order_result.average_price:.4f}")
+                       f"Price: ${order_result.average_price:.4f}, "
+                       f"Commission: ${order_result.commission:.4f}")
             
-            # Update portfolio state for real trading
-            if not self.paper_trading:
-                # In real trading, we need to update the portfolio when orders are filled
-                # This ensures accurate position tracking
-                self._update_portfolio_on_fill(order_request, order_result)
+            # Update portfolio state for both paper and real trading
+            self._update_portfolio_on_fill(order_request, order_result)
+            
+            # Update trade records with fill information
+            self._update_trade_record_on_fill(order_id, order_result)
+            
+            # Notify trade callbacks
+            fill_event = {
+                'timestamp': datetime.now().isoformat(),
+                'order_id': order_id,
+                'symbol': symbol,
+                'side': order_request.side,
+                'filled_quantity': order_result.filled_quantity,
+                'average_price': order_result.average_price,
+                'commission': order_result.commission,
+                'paper_trading': self.paper_trading
+            }
+            
+            for callback in self.trade_callbacks:
+                try:
+                    callback(fill_event)
+                except Exception as e:
+                    logger.error(f"Fill callback error: {e}")
             
         except Exception as e:
             logger.error(f"Error handling order fill: {e}")
@@ -361,6 +448,25 @@ class LiveTradingEngine:
         except Exception as e:
             logger.error(f"Error updating portfolio on fill: {e}")
     
+    def _update_trade_record_on_fill(self, order_id: str, order_result):
+        """Update trade record with fill information."""
+        try:
+            if hasattr(self, 'trade_records'):
+                # Find the most recent trade record for this order
+                for trade_record in reversed(self.trade_records):
+                    if trade_record.get('order_id') == order_id:
+                        trade_record.update({
+                            'fill_timestamp': datetime.now().isoformat(),
+                            'filled_quantity': order_result.filled_quantity,
+                            'average_price': order_result.average_price,
+                            'commission': order_result.commission,
+                            'order_status': order_result.status.value
+                        })
+                        logger.debug(f"Updated trade record for order {order_id}")
+                        break
+        except Exception as e:
+            logger.error(f"Error updating trade record on fill: {e}")
+    
     def _update_position_pnls(self):
         """Update unrealized PnL for all positions."""
         active_positions = self.portfolio_manager.position_manager.get_active_positions()
@@ -376,6 +482,9 @@ class LiveTradingEngine:
         realtime_status = self.realtime_feeder.get_system_status()
         order_manager_status = self.order_manager.get_system_status()
         
+        # Get trade analytics
+        trade_analytics = self.get_trade_analytics()
+        
         return {
             'engine_info': {
                 'is_running': self.is_running,
@@ -388,6 +497,7 @@ class LiveTradingEngine:
             'realtime_feeds': realtime_status,
             'order_manager': order_manager_status,
             'performance': self.portfolio_manager.get_performance_stats(),
+            'trade_analytics': trade_analytics,
             'last_updated': datetime.now().isoformat()
         }
     
@@ -404,6 +514,56 @@ class LiveTradingEngine:
             return True
         
         return False
+    
+    def get_trade_analytics(self) -> Dict[str, Any]:
+        """Get trade analytics and performance metrics."""
+        try:
+            if not hasattr(self, 'trade_records') or not self.trade_records:
+                return {
+                    'total_trades': 0,
+                    'successful_trades': 0,
+                    'failed_trades': 0,
+                    'average_execution_time_ms': 0,
+                    'total_commission': 0.0,
+                    'symbols_traded': [],
+                    'signal_types': {}
+                }
+            
+            total_trades = len(self.trade_records)
+            successful_trades = sum(1 for trade in self.trade_records if trade.get('order_status') == 'filled')
+            failed_trades = total_trades - successful_trades
+            
+            # Calculate average execution time
+            execution_times = [trade.get('execution_time_ms', 0) for trade in self.trade_records if trade.get('execution_time_ms')]
+            avg_execution_time = sum(execution_times) / len(execution_times) if execution_times else 0
+            
+            # Calculate total commission
+            total_commission = sum(trade.get('commission', 0) for trade in self.trade_records)
+            
+            # Get unique symbols traded
+            symbols_traded = list(set(trade.get('symbol') for trade in self.trade_records))
+            
+            # Count signal types
+            signal_types = {}
+            for trade in self.trade_records:
+                signal_type = trade.get('signal_type', 'unknown')
+                signal_types[signal_type] = signal_types.get(signal_type, 0) + 1
+            
+            return {
+                'total_trades': total_trades,
+                'successful_trades': successful_trades,
+                'failed_trades': failed_trades,
+                'success_rate': successful_trades / total_trades if total_trades > 0 else 0,
+                'average_execution_time_ms': avg_execution_time,
+                'total_commission': total_commission,
+                'symbols_traded': symbols_traded,
+                'signal_types': signal_types,
+                'last_trade_time': max(trade.get('timestamp', '') for trade in self.trade_records) if self.trade_records else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating trade analytics: {e}")
+            return {}
     
     def get_portfolio_summary(self) -> Dict[str, Any]:
         """Get detailed portfolio summary."""

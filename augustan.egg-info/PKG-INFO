@@ -69,7 +69,31 @@ Dynamic: license-file
 
 # 🚀 Augustan Trading System
 
-The ultimate futures trading and position sizing tool with intelligent risk management, multi-exchange support, and automated signal generation.
+The ultimate futures trading and position sizing tool with intelligent risk management, multi-exchange support, automated signal generation, and comprehensive testing framework.
+
+## 📚 **Complete Documentation**
+
+For comprehensive documentation including core components, CLI commands, testing framework, and development guide, see:
+
+**[📖 AUGUSTAN_COMPLETE_GUIDE.md](AUGUSTAN_COMPLETE_GUIDE.md)**
+
+This guide covers everything you need to know about the Augustan Trading System.
+
+## 🚀 **Quick Start**
+
+```bash
+# Install everything
+pip install -r requirements.txt
+
+# Test installation
+python -m trading_system.cli --help
+
+# Run tests
+python run_tests.py
+
+# Start paper trading
+python -m trading_system.cli paper start --balance 10000
+```
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -135,7 +159,7 @@ aug position tradeable --budget 50
 
 ### 2. **Analyze Specific Symbol Position Sizing**
 ```bash
-aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 ```
 **Result**: Detailed position sizing analysis with safety metrics.
 
@@ -154,7 +178,7 @@ aug trading analyze --use-tradeable --budget 50
 ## 📊 **Real Example Output**
 
 ```bash
-$ aug position analyze --symbol DOGE/USDT --budget 50 --risk-percent 0.5
+$ aug position analyze --symbol DOGE/USDT  # Auto-fetches budget from wallet
 
 📊 Position Sizing Analysis for DOGE/USDT
 ============================================================
@@ -235,30 +259,169 @@ aug config validate
 
 ## ⚙️ **Configuration**
 
-Create `config/exchanges_config.json`:
+The Augustan Trading System uses **3 specialized configuration files** for different trading modes and scenarios:
+
+### 📋 **Configuration Files Overview**
+
+| File | Purpose | When Used |
+|------|---------|-----------|
+| `config/exchanges_config.json` | Exchange APIs & Basic Settings | Analysis, Jobs, General Operations |
+| `config/paper_trading_config.json` | Paper Trading Simulation | Learning & Testing |
+| `config/live_trading_config.json` | Live Trading Settings | Real Money Trading |
+
+### 🔧 **1. Exchange Configuration (`exchanges_config.json`)**
+
+**Controls**: Exchange connections, API credentials, and base system settings.
+
 ```json
 {
-    "exchanges": {
-        "binance": {"enabled": true},
-        "bybit": {"enabled": true},
-        "okx": {"enabled": true},
-        "bitget": {"enabled": true},
-        "gate": {"enabled": true}
+  "binANCE": {
+    "spot": {
+      "api_key": "your_spot_api_key",
+      "secret": "your_spot_secret",
+      "enabled": true,
+      "testnet": true
     },
-    "volume_analysis": {
-        "min_volume_usd_24h": 1000000,
-        "min_volume_rank": 200,
-        "min_price_change_24h": -50,
-        "max_price_change_24h": 500
-    },
-    "risk_management": {
-        "max_budget": 50.0,
-        "max_risk_per_trade": 0.002,
-        "min_safety_ratio": 1.5,
-        "default_leverage": 5
+    "futures": {
+      "api_key": "your_futures_api_key", 
+      "secret": "your_futures_secret",
+      "enabled": true,
+      "testnet": true
     }
+  },
+  "volume_settings": {
+    "min_volume_usd_24h": 1000000,    // Minimum $1M daily volume
+    "min_volume_rank": 200,           // Only top 200 coins by volume
+    "max_markets_per_exchange": 100   // Max 100 markets per exchange
+  },
+  "job_settings": {
+    "schedule_time": "09:00",         // Daily analysis at 9 AM
+    "retention_days": 30,             // Keep data for 30 days
+    "output_directory": "volume_data"  // Where to save analysis results
+  },
+  "signal_generation": {
+    "rsi_period": 14,                // RSI calculation period
+    "rsi_oversold": 30,              // RSI buy threshold
+    "rsi_overbought": 70,            // RSI sell threshold
+    "macd_fast": 12,                 // MACD fast EMA
+    "macd_slow": 26,                 // MACD slow EMA
+    "macd_signal": 9,                // MACD signal line
+    "min_signal_strength": 0.7,      // Minimum signal confidence
+    "signal_cooldown_minutes": 30     // Time between signals
+  }
 }
 ```
+
+### 📝 **2. Paper Trading Configuration (`paper_trading_config.json`)**
+
+**Purpose**: Conservative settings for safe learning and testing.
+
+#### **💰 Risk Management (Learning-Friendly):**
+```json
+{
+  "risk_management": {
+    "default_budget": 100.0,          // Small $100 budget for learning
+    "max_risk_per_trade": 0.01,       // Only 1% risk per trade
+    "min_safety_ratio": 2.0,          // 2x safety margin required
+    "default_leverage": 3,            // Conservative 3x leverage
+    "max_position_percent": 0.05,     // Max 5% of portfolio per position
+    "stop_loss_percent": 2.0,         // 2% stop loss
+    "take_profit_percent": 4.0,       // 4% take profit
+    "max_positions": 3,               // Max 3 concurrent positions
+    "emergency_stop_loss": 5.0        // Emergency stop at 5% loss
+  },
+  "data_fetching": {
+    "max_retries": 3,                // Fewer retries for stability
+    "retry_delay": 1.0,              // Longer delays
+    "timeout_seconds": 30            // Longer timeouts
+  },
+  "trading_mode": "paper"
+}
+```
+
+#### **📈 Signal Generation (Conservative):**
+```json
+{
+  "signal_generation": {
+    "rsi_oversold": 30,              // Conservative RSI levels
+    "rsi_overbought": 70,
+    "min_signal_strength": 0.7,      // Higher confidence required
+    "signal_cooldown_minutes": 30     // Longer cooldown periods
+  }
+}
+```
+
+### 🚀 **3. Live Trading Configuration (`live_trading_config.json`)**
+
+**Purpose**: Aggressive settings for production trading with real money.
+
+#### **💰 Risk Management (Production-Ready):**
+```json
+{
+  "risk_management": {
+    "default_budget": 5000.0,         // Larger $5000 budget
+    "max_risk_per_trade": 0.02,       // 2% risk per trade
+    "min_safety_ratio": 1.5,          // Lower safety margin (aggressive)
+    "default_leverage": 5,            // Higher leverage
+    "max_position_percent": 0.1,      // Up to 10% per position
+    "max_positions": 5,               // More concurrent positions
+    "emergency_stop_loss": 10.0       // Higher emergency stop
+  },
+  "volume_settings": {
+    "min_volume_usd_24h": 5000000,    // Higher volume requirement ($5M)
+    "min_volume_rank": 100,           // Only top 100 coins
+    "max_markets_per_exchange": 50    // Fewer markets for quality focus
+  },
+  "signal_generation": {
+    "rsi_oversold": 25,              // More extreme RSI levels
+    "rsi_overbought": 75,
+    "min_signal_strength": 0.6,      // Lower confidence threshold
+    "signal_cooldown_minutes": 15     // Faster signal generation
+  },
+  "trading_mode": "live"
+}
+```
+
+### 🎯 **Configuration Comparison**
+
+| Setting | Paper Trading | Live Trading | Purpose |
+|---------|---------------|--------------|---------|
+| **Budget** | $100 | $5000 | Learning vs Production |
+| **Risk per Trade** | 1% | 2% | Conservative vs Aggressive |
+| **Safety Ratio** | 2.0x | 1.5x | More vs Less Safety |
+| **Max Positions** | 3 | 5 | Fewer vs More Trades |
+| **RSI Levels** | 30/70 | 25/75 | Conservative vs Aggressive |
+| **Signal Cooldown** | 30 min | 15 min | Slower vs Faster Trading |
+| **Testnet** | ✅ Yes | ❌ No | Safe Testing vs Real Money |
+
+### 🛠️ **Configuration Usage**
+
+#### **For Learning/Testing:**
+```bash
+# Automatically uses paper_trading_config.json
+python3 -m trading_system.cli paper start --balance 1000
+```
+
+#### **For Live Trading:**
+```bash
+# Automatically uses live_trading_config.json  
+python3 -m trading_system.cli live start --symbols BTC/USDT --balance 5000
+```
+
+#### **For Analysis:**
+```bash
+# Automatically uses exchanges_config.json
+python3 -m trading_system.cli volume analyze --enhanced
+```
+
+### ⚙️ **Configuration Override**
+
+The system automatically selects the right config based on trading mode:
+- **Paper Trading**: Uses `paper_trading_config.json`
+- **Live Trading**: Uses `live_trading_config.json`  
+- **Analysis/Jobs**: Uses `exchanges_config.json`
+
+**💡 Pro Tip**: Start with paper trading config for safe learning, then switch to live trading config when ready for real money trading!
 
 ## 🔧 **Advanced Usage**
 

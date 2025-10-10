@@ -17,12 +17,7 @@ from enum import Enum
 
 from ..core.config_manager import get_config_manager
 from ..core.resilient_fetcher import ResilientFetcher
-
-
-class EventType(Enum):
-    """Event types for real-time data."""
-    CANDLE_TICK = "CANDLE_TICK"
-    CANDLE_CLOSED = "CANDLE_CLOSED"
+from ..core.event_system import event_bus, CandleClosedEvent, EventType
 
 
 @dataclass
@@ -279,14 +274,35 @@ class BinanceWebsocketFeeder:
         # Emit CANDLE_CLOSED only when candle is final and not already emitted
         if candle.is_final:
             with self.data_lock:
-                if symbol in self.market_data:
-                    if not self.market_data[symbol].is_candle_closed(candle.timeframe, candle.timestamp):
-                        closed_event = RealtimeEvent(
+                if candle.symbol in self.market_data:
+                    if not self.market_data[candle.symbol].is_candle_closed(candle.timeframe, candle.timestamp):
+                        # Create MarketData object for the event
+                        from ..core.models import MarketData
+                        market_data = MarketData(
+                            symbol=candle.symbol,
+                            timestamp=candle.timestamp,
+                            open=candle.open,
+                            high=candle.high,
+                            low=candle.low,
+                            close=candle.close,
+                            volume=candle.volume
+                        )
+                        
+                        # Emit to new event system
+                        closed_event = CandleClosedEvent(
+                            symbol=candle.symbol,
+                            candle_data=market_data,
+                            timeframe=candle.timeframe
+                        )
+                        event_bus.emit_sync(closed_event)
+                        
+                        # Also emit to legacy system
+                        legacy_event = RealtimeEvent(
                             event_type=EventType.CANDLE_CLOSED,
                             timeframe=candle.timeframe,
                             data=candle
                         )
-                        self._notify_callbacks(closed_event)
+                        self._notify_callbacks(legacy_event)
                         logger.info(f"CANDLE_CLOSED emitted for {candle.symbol} {candle.timeframe} at {candle.timestamp}")
     
     def _notify_callbacks(self, event: RealtimeEvent):
