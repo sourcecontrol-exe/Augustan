@@ -25,7 +25,7 @@
   "job_settings": {
     "schedule_time": "09:00",
     "retention_days": 30,
-    "output_directory": "volume_data"
+    "output_directory": "volume_dat"
   },
   "risk_management": {
     "default_budget": 100.0,

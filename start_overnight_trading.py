@@ -347,17 +347,17 @@ def main():
     parser.add_argument('--balance', type=float, default=1000.0, 
                        help='Initial trading balance')
     parser.add_argument('--duration', type=int, default=480, 
-                       help='Duration in minutes (default: 480 = 8 hours)')
+                       help='Duration in minutes - default: 480 = 8 hours')
     parser.add_argument('--paper', action='store_true', default=True,
-                       help='Run in paper trading mode (default: True)')
+                       help='Run in paper trading mode - default: True')
     parser.add_argument('--live', action='store_true',
-                       help='Run in live trading mode (FALSE BY DEFAULT - USE WITH CAUTION)')
+                       help='Run in live trading mode - FALSE BY DEFAULT - USE WITH CAUTION')
     parser.add_argument('--config', type=str, 
                        help='Path to configuration file')
     parser.add_argument('--profit-target', type=float, default=5.0,
-                       help='Profit target percentage (default: 5.0%)')
+                       help='Profit target percentage - default: 5.0')
     parser.add_argument('--max-loss', type=float, default=3.0,
-                       help='Maximum loss percentage (default: 3.0%)')
+                       help='Maximum loss percentage - default: 3.0')
     
     args = parser.parse_args()
     
