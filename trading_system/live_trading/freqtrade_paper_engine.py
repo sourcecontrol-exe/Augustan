@@ -11,7 +11,6 @@ from loguru import logger
 import uuid
 import random
 
-from ..core.event_system import EventHandler, OrderFilledEvent, event_bus
 from ..core.models import MarketData
 from ..core.position_state import SignalType, PositionState
 
@@ -105,7 +104,7 @@ class PaperTradingConfig:
     max_execution_delay_ms: int = 100  # Max delay in milliseconds
 
 
-class FreqtradePaperEngine(EventHandler):
+class FreqtradePaperEngine:
     """
     Freqtrade-Style Paper Trading Engine
     
@@ -120,7 +119,6 @@ class FreqtradePaperEngine(EventHandler):
     
     def __init__(self, config: PaperTradingConfig = None):
         """Initialize paper trading engine."""
-        super().__init__()
         self.config = config or PaperTradingConfig()
         
         # Account state
@@ -145,9 +143,8 @@ class FreqtradePaperEngine(EventHandler):
         self.max_drawdown = 0.0
         self.peak_balance = self.initial_balance
         
-        # Subscribe to market data events
-        from ..core.event_system import EventType
-        self.subscribe(EventType.CANDLE_CLOSED, self.handle_market_data)
+        # Event subscriptions removed - deprecated global event system
+        self.event_callbacks = []
         
         logger.info(f"Freqtrade Paper Engine initialized with ${self.balance:,.2f}")
     
@@ -503,16 +500,29 @@ class FreqtradePaperEngine(EventHandler):
                     position.trailing_stop = new_trailing_stop
     
     async def _emit_order_filled(self, order: PaperOrder):
-        """Emit order filled event."""
-        event = OrderFilledEvent(
-            symbol=order.symbol,
-            order_id=order.id,
-            side=order.side,
-            quantity=order.filled_quantity,
-            price=order.filled_price,
-            commission=order.commission
-        )
-        await event_bus.emit(event)
+        """Emit order filled event to callbacks (no longer using global event bus)."""
+        event_data = {
+            'symbol': order.symbol,
+            'order_id': order.id,
+            'side': order.side,
+            'quantity': order.filled_quantity,
+            'price': order.filled_price,
+            'commission': order.commission
+        }
+        
+        # Notify all callbacks
+        for callback in self.event_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(event_data)
+                else:
+                    callback(event_data)
+            except Exception as e:
+                logger.error(f"Error in event callback: {e}")
+    
+    def add_event_callback(self, callback):
+        """Add event callback for order filled events."""
+        self.event_callbacks.append(callback)
     
     def get_account_summary(self) -> Dict[str, Any]:
         """Get account summary."""

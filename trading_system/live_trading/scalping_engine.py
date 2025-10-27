@@ -10,14 +10,13 @@ from loguru import logger
 from ..data_feeder.realtime_feeder import RealtimeFeeder, create_realtime_feeder
 from ..risk_manager.scalping_risk_manager import ScalpingRiskManager, ScalpingRiskConfig
 from ..strategy_engine.scalping_strategies import ScalpingStrategyManager, ScalpingConfig
-from ..core.event_system import EventHandler, CandleClosedEvent, SignalGeneratedEvent, OrderFilledEvent, event_bus
 from ..core.position_state import EnhancedSignal, SignalType
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
 from .order_manager import OrderManager, OrderRequest, OrderType, OrderStatus
 from .freqtrade_paper_engine import FreqtradePaperEngine, PaperTradingConfig
 
 
-class ScalpingTradingEngine(EventHandler):
+class ScalpingTradingEngine:
     """
     Event-Driven Scalping Trading Engine
     
@@ -30,21 +29,30 @@ class ScalpingTradingEngine(EventHandler):
     """
     
     def __init__(self, watchlist: List[str], initial_balance: float, 
-                 config_path: Optional[str] = None, paper_trading: bool = True):
+                 config_path: Optional[str] = None, paper_trading: bool = True,
+                 config_manager: Optional[ConfigManager] = None):
         """
         Initialize Scalping Trading Engine.
         
         Args:
             watchlist: List of symbols to trade
             initial_balance: Starting account balance
-            config_path: Configuration file path
+            config_path: Configuration file path (deprecated, use config_manager)
             paper_trading: If True, simulate trades without real execution
+            config_manager: Configuration manager instance
         """
-        super().__init__()
         self.watchlist = watchlist
         self.initial_balance = initial_balance
         self.paper_trading = paper_trading
-        self.config_manager = get_config_manager(config_path)
+        
+        # Use dependency injection if provided
+        if config_manager is None:
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing()
+        else:
+            self.config_manager = config_manager
         
         # Initialize components
         self.realtime_feeder = None
@@ -99,8 +107,7 @@ class ScalpingTradingEngine(EventHandler):
         logger.info("Starting Scalping Trading Engine...")
         
         try:
-            # Start event bus
-            event_task = asyncio.create_task(event_bus.start())
+            # Event bus startup removed - deprecated global event system
             
             # Initialize realtime feeder
             self.realtime_feeder = create_realtime_feeder(
@@ -144,8 +151,7 @@ class ScalpingTradingEngine(EventHandler):
         if self.order_manager:
             await self.order_manager.stop()
         
-        # Stop event bus
-        event_bus.stop()
+        # Event bus stopped - deprecated global event system
         
         # Cleanup
         self.cleanup()

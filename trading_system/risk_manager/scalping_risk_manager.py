@@ -10,12 +10,11 @@ from dataclasses import dataclass
 from loguru import logger
 import ta
 
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
 from ..core.position_state import EnhancedSignal, PositionState, SignalType
 from ..core.position_sizing import ExchangeLimits
 from ..core.futures_models import ExchangeType
 from ..data_feeder.exchange_limits_fetcher import ExchangeLimitsFetcher
-from ..core.event_system import EventHandler, OrderFilledEvent, event_bus
 
 
 @dataclass
@@ -88,7 +87,7 @@ class ScalpingRiskResult:
     max_hold_until: Optional[datetime] = None
 
 
-class ScalpingRiskManager(EventHandler):
+class ScalpingRiskManager:
     """
     Enhanced Risk Manager for Scalping Trading
     
@@ -101,11 +100,27 @@ class ScalpingRiskManager(EventHandler):
     - Consecutive loss protection
     """
     
-    def __init__(self, config: ScalpingRiskConfig = None, config_path: Optional[str] = None):
-        """Initialize scalping risk manager."""
-        super().__init__()
+    def __init__(self, config: ScalpingRiskConfig = None, config_path: Optional[str] = None,
+                 config_manager: Optional[ConfigManager] = None):
+        """
+        Initialize scalping risk manager.
+        
+        Args:
+            config: Scalping risk config
+            config_path: Path to config file (deprecated, use config_manager)
+            config_manager: Configuration manager instance
+        """
         self.config = config or ScalpingRiskConfig()
-        self.config_manager = get_config_manager(config_path)
+        
+        # Use dependency injection if provided
+        if config_manager is None:
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing()
+        else:
+            self.config_manager = config_manager
+        
         self.limits_fetcher = ExchangeLimitsFetcher()
         
         # Position tracking
@@ -114,43 +129,51 @@ class ScalpingRiskManager(EventHandler):
         self.consecutive_losses: int = 0
         self.last_loss_time: Optional[datetime] = None
         
-        # Subscribe to order filled events
-        from ..core.event_system import EventType
-        self.subscribe(EventType.ORDER_FILLED, self.handle_order_filled)
+        # Event subscriptions removed - deprecated global event system
         
         logger.info("Scalping Risk Manager initialized")
     
-    async def handle_order_filled(self, event: OrderFilledEvent):
-        """Handle order filled events for position tracking."""
+    def handle_order_filled(self, symbol: str, side: str, quantity: float, price: float):
+        """
+        Handle order filled events for position tracking.
+        
+        Args:
+            symbol: Trading symbol
+            side: Order side (buy/sell)
+            quantity: Order quantity
+            price: Fill price
+        """
         # Update position tracking
-        if event.symbol not in self.active_positions:
-            self.active_positions[event.symbol] = {
-                'side': event.side,
-                'quantity': event.quantity,
-                'entry_price': event.price,
-                'entry_time': event.timestamp,
+        if symbol not in self.active_positions:
+            from datetime import datetime
+            self.active_positions[symbol] = {
+                'side': side,
+                'quantity': quantity,
+                'entry_price': price,
+                'entry_time': datetime.now(),
                 'stop_loss': None,
                 'take_profit': None,
                 'trailing_stop': None
             }
         else:
             # Update existing position
-            pos = self.active_positions[event.symbol]
-            if event.side != pos['side']:
+            pos = self.active_positions[symbol]
+            if side != pos['side']:
                 # Closing position
-                pnl = self._calculate_pnl(pos, event.price, event.quantity)
+                pnl = self._calculate_pnl(pos, price, quantity)
                 self.daily_pnl += pnl
                 
                 if pnl < 0:
                     self.consecutive_losses += 1
-                    self.last_loss_time = event.timestamp
+                    from datetime import datetime
+                    self.last_loss_time = datetime.now()
                 else:
                     self.consecutive_losses = 0
                 
                 # Remove position
-                del self.active_positions[event.symbol]
+                del self.active_positions[symbol]
                 
-                logger.info(f"Position closed for {event.symbol}: PnL ${pnl:.2f}")
+                logger.info(f"Position closed for {symbol}: PnL ${pnl:.2f}")
     
     def calculate_risk(self, signal: EnhancedSignal, current_price: float, 
                       account_balance: float, market_data: pd.DataFrame) -> ScalpingRiskResult:
