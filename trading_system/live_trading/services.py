@@ -8,12 +8,20 @@ Replaces the monolithic LiveTradingEngine with smaller, focused services:
 - MonitoringService: Health monitoring and metrics
 """
 import asyncio
-from typing import Dict, List, Optional, Callable, Any, Protocol
+from typing import Dict, List, Optional, Callable, Any
 from datetime import datetime
 from loguru import logger
 
+from .interfaces import (
+    IMarketDataStreamer,
+    ISignalGeneratorService,
+    ITradeExecutionService,
+    IMonitoringService,
+    IRealtimeFeeder
+)
 
-class IRealtimeFeeder(Protocol):
+
+class IRealtimeFeeder:
     """Interface for realtime data feeder."""
     def start(self):
         """Start the data feed."""
@@ -32,7 +40,7 @@ class IRealtimeFeeder(Protocol):
         ...
 
 
-class MarketDataStreamer:
+class MarketDataStreamer(IMarketDataStreamer):
     """
     Service for streaming real-time market data.
     
@@ -97,7 +105,7 @@ class MarketDataStreamer:
         return self._is_running
 
 
-class SignalGeneratorService:
+class SignalGeneratorService(ISignalGeneratorService):
     """
     Service for generating trading signals from market data.
     
@@ -182,7 +190,7 @@ class SignalGeneratorService:
                     logger.error(f"Signal callback error: {e}")
 
 
-class TradeExecutionService:
+class TradeExecutionService(ITradeExecutionService):
     """
     Service for executing trades.
     
@@ -304,7 +312,7 @@ class TradeExecutionService:
                 logger.error(f"Execution callback error: {e}")
 
 
-class MonitoringService:
+class MonitoringService(IMonitoringService):
     """
     Service for monitoring system health and metrics.
     

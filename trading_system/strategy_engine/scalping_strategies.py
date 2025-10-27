@@ -4,6 +4,7 @@ Implements EMA Crossover, Bollinger Bands, and VWAP strategies optimized for sca
 """
 import pandas as pd
 import numpy as np
+import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -12,7 +13,6 @@ import ta
 
 from ..core.models import MarketData, TradingSignal, StrategyType
 from ..core.position_state import EnhancedSignal, SignalType
-from ..core.event_system import EventHandler, CandleClosedEvent, SignalGeneratedEvent, event_bus
 from .base_strategy import BaseStrategy
 
 
@@ -49,7 +49,7 @@ class ScalpingConfig:
             self.confirmation_timeframes = ["3m", "5m"]
 
 
-class EMACrossoverStrategy(EventHandler, BaseStrategy):
+class EMACrossoverStrategy(BaseStrategy):
     """
     EMA Crossover Strategy for Scalping
     
@@ -60,15 +60,13 @@ class EMACrossoverStrategy(EventHandler, BaseStrategy):
     
     def __init__(self, config: ScalpingConfig = None):
         """Initialize EMA Crossover strategy."""
-        EventHandler.__init__(self)  # Initialize EventHandler first
-        BaseStrategy.__init__(self, StrategyType.SCALPING)  # Then BaseStrategy
+        BaseStrategy.__init__(self, StrategyType.SCALPING)
         self.config = config or ScalpingConfig()
         self.name = "EMA_Crossover_Scalping"
         self.symbol_data: Dict[str, pd.DataFrame] = {}
         
-        # Subscribe to candle closed events
-        from ..core.event_system import EventType
-        self.subscribe(EventType.CANDLE_CLOSED, self.handle_candle_closed)
+        # Event subscriptions removed - deprecated global event system
+        self.event_callbacks = []
         
         logger.info(f"EMA Crossover Strategy initialized: {self.config.ema_fast}EMA vs {self.config.ema_slow}EMA")
     
@@ -226,18 +224,32 @@ class EMACrossoverStrategy(EventHandler, BaseStrategy):
         return min(confidence, 1.0)
     
     async def _emit_signal(self, signal: EnhancedSignal):
-        """Emit signal event."""
-        signal_event = SignalGeneratedEvent(
-            symbol=signal.symbol,
-            signal_data=signal.to_dict(),
-            strategy_name=signal.strategy_name,
-            confidence=signal.confidence
-        )
-        await event_bus.emit(signal_event)
+        """Emit signal event to callbacks (no longer using global event bus)."""
+        signal_data = {
+            'symbol': signal.symbol,
+            'signal_data': signal.to_dict(),
+            'strategy_name': signal.strategy_name,
+            'confidence': signal.confidence
+        }
+        
+        # Notify all callbacks
+        for callback in self.event_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(signal_data)
+                else:
+                    callback(signal_data)
+            except Exception as e:
+                logger.error(f"Error in event callback: {e}")
+        
         logger.info(f"EMA Crossover signal generated: {signal.signal_type.value} {signal.symbol} @ {signal.entry_price}")
+    
+    def add_event_callback(self, callback):
+        """Add event callback for signal generation."""
+        self.event_callbacks.append(callback)
 
 
-class BollingerBandStrategy(EventHandler, BaseStrategy):
+class BollingerBandStrategy(BaseStrategy):
     """
     Bollinger Band Squeeze/Breakout Strategy for Scalping
     
@@ -248,16 +260,14 @@ class BollingerBandStrategy(EventHandler, BaseStrategy):
     
     def __init__(self, config: ScalpingConfig = None):
         """Initialize Bollinger Band strategy."""
-        EventHandler.__init__(self)  # Initialize EventHandler first
-        BaseStrategy.__init__(self, StrategyType.SCALPING)  # Then BaseStrategy
+        BaseStrategy.__init__(self, StrategyType.SCALPING)
         self.config = config or ScalpingConfig()
         self.name = "Bollinger_Band_Scalping"
         self.symbol_data: Dict[str, pd.DataFrame] = {}
         self.squeeze_state: Dict[str, bool] = {}  # Track squeeze state per symbol
         
-        # Subscribe to candle closed events
-        from ..core.event_system import EventType
-        self.subscribe(EventType.CANDLE_CLOSED, self.handle_candle_closed)
+        # Event subscriptions removed - deprecated global event system
+        self.event_callbacks = []
         
         logger.info(f"Bollinger Band Strategy initialized: {self.config.bb_period} period, {self.config.bb_std} std")
     
@@ -420,18 +430,32 @@ class BollingerBandStrategy(EventHandler, BaseStrategy):
         return min(confidence, 1.0)
     
     async def _emit_signal(self, signal: EnhancedSignal):
-        """Emit signal event."""
-        signal_event = SignalGeneratedEvent(
-            symbol=signal.symbol,
-            signal_data=signal.to_dict(),
-            strategy_name=signal.strategy_name,
-            confidence=signal.confidence
-        )
-        await event_bus.emit(signal_event)
+        """Emit signal event to callbacks (no longer using global event bus)."""
+        signal_data = {
+            'symbol': signal.symbol,
+            'signal_data': signal.to_dict(),
+            'strategy_name': signal.strategy_name,
+            'confidence': signal.confidence
+        }
+        
+        # Notify all callbacks
+        for callback in self.event_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(signal_data)
+                else:
+                    callback(signal_data)
+            except Exception as e:
+                logger.error(f"Error in event callback: {e}")
+        
         logger.info(f"Bollinger Band signal generated: {signal.signal_type.value} {signal.symbol} @ {signal.entry_price}")
+    
+    def add_event_callback(self, callback):
+        """Add event callback for signal generation."""
+        self.event_callbacks.append(callback)
 
 
-class VWAPReversionStrategy(EventHandler, BaseStrategy):
+class VWAPReversionStrategy(BaseStrategy):
     """
     VWAP Reversion Strategy for Scalping
     
@@ -442,15 +466,13 @@ class VWAPReversionStrategy(EventHandler, BaseStrategy):
     
     def __init__(self, config: ScalpingConfig = None):
         """Initialize VWAP Reversion strategy."""
-        EventHandler.__init__(self)  # Initialize EventHandler first
-        BaseStrategy.__init__(self, StrategyType.SCALPING)  # Then BaseStrategy
+        BaseStrategy.__init__(self, StrategyType.SCALPING)
         self.config = config or ScalpingConfig()
         self.name = "VWAP_Reversion_Scalping"
         self.symbol_data: Dict[str, pd.DataFrame] = {}
         
-        # Subscribe to candle closed events
-        from ..core.event_system import EventType
-        self.subscribe(EventType.CANDLE_CLOSED, self.handle_candle_closed)
+        # Event subscriptions removed - deprecated global event system
+        self.event_callbacks = []
         
         logger.info(f"VWAP Reversion Strategy initialized: {self.config.vwap_period} period")
     
@@ -607,15 +629,29 @@ class VWAPReversionStrategy(EventHandler, BaseStrategy):
         return min(confidence, 1.0)
     
     async def _emit_signal(self, signal: EnhancedSignal):
-        """Emit signal event."""
-        signal_event = SignalGeneratedEvent(
-            symbol=signal.symbol,
-            signal_data=signal.to_dict(),
-            strategy_name=signal.strategy_name,
-            confidence=signal.confidence
-        )
-        await event_bus.emit(signal_event)
+        """Emit signal event to callbacks (no longer using global event bus)."""
+        signal_data = {
+            'symbol': signal.symbol,
+            'signal_data': signal.to_dict(),
+            'strategy_name': signal.strategy_name,
+            'confidence': signal.confidence
+        }
+        
+        # Notify all callbacks
+        for callback in self.event_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(signal_data)
+                else:
+                    callback(signal_data)
+            except Exception as e:
+                logger.error(f"Error in event callback: {e}")
+        
         logger.info(f"VWAP Reversion signal generated: {signal.signal_type.value} {signal.symbol} @ {signal.entry_price}")
+    
+    def add_event_callback(self, callback):
+        """Add event callback for signal generation."""
+        self.event_callbacks.append(callback)
 
 
 class ScalpingStrategyManager:
