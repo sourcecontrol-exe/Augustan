@@ -2,7 +2,13 @@
 """
 Event-Driven Architecture for Scalping Trading System
 Provides event emission and handling for real-time trading decisions.
+
+⚠️ DEPRECATED: This module uses a global singleton and has issues with error handling.
+Use trading_system.core.event_system_refactored.EventBus instead.
+
+This module will be removed in a future version.
 """
+import warnings
 import asyncio
 from datetime import datetime
 from typing import Dict, List, Callable, Any, Optional, Set
@@ -13,6 +19,14 @@ import threading
 from collections import defaultdict
 
 from .models import MarketData
+
+# Show deprecation warning
+warnings.warn(
+    "event_system.EventBus and event_bus are deprecated. "
+    "Use trading_system.core.event_system_refactored.EventBus instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 class EventType(Enum):

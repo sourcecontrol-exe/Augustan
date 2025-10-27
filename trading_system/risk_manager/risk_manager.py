@@ -10,7 +10,7 @@ from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from loguru import logger
 
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
 from ..core.position_state import EnhancedSignal, PositionState
 from ..core.position_sizing import ExchangeLimits
 from ..core.futures_models import ExchangeType
@@ -91,15 +91,25 @@ class RiskManager:
     5. Calculate liquidation risks for leveraged positions
     """
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None,
+                 config_manager: Optional[ConfigManager] = None):
         """
         Initialize Risk Manager.
         
         Args:
-            config_path: Path to configuration file
+            config_path: Path to configuration file (deprecated, use config_manager)
+            config_manager: Configuration manager instance
         """
-        self.config_manager = get_config_manager(config_path)
-        self.risk_config = self.config_manager.get_risk_management_config()
+        # Use dependency injection if provided
+        if config_manager is None:
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing()
+        else:
+            self.config_manager = config_manager
+        
+        self.risk_config = self.config_manager.risk_management
         self.limits_fetcher = ExchangeLimitsFetcher()
         
         # Risk limits

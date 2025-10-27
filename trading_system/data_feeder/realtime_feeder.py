@@ -15,9 +15,10 @@ from loguru import logger
 import ccxt
 from enum import Enum
 
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
 from ..core.resilient_fetcher import ResilientFetcher
-from ..core.event_system import event_bus, CandleClosedEvent, EventType
+from ..core.exceptions import DataError, NetworkError
+from ..core.logging_config import StructuredLogger
 
 
 @dataclass
@@ -52,14 +53,14 @@ class RealtimeCandle:
 @dataclass
 class RealtimeEvent:
     """Real-time event with type and data."""
-    event_type: EventType
+    event_type: str  # Changed to string for flexibility
     timeframe: str
     data: RealtimeCandle
     timestamp: datetime = field(default_factory=datetime.now)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'event_type': self.event_type.value,
+            'event_type': self.event_type,  # Already a string
             'timeframe': self.timeframe,
             'data': self.data.to_dict(),
             'timestamp': self.timestamp.isoformat()
@@ -265,7 +266,7 @@ class BinanceWebsocketFeeder:
         """Emit CANDLE_TICK and CANDLE_CLOSED events."""
         # Always emit CANDLE_TICK for every update
         tick_event = RealtimeEvent(
-            event_type=EventType.CANDLE_TICK,
+            event_type='CANDLE_TICK',
             timeframe=candle.timeframe,
             data=candle
         )
@@ -288,17 +289,9 @@ class BinanceWebsocketFeeder:
                             volume=candle.volume
                         )
                         
-                        # Emit to new event system
-                        closed_event = CandleClosedEvent(
-                            symbol=candle.symbol,
-                            candle_data=market_data,
-                            timeframe=candle.timeframe
-                        )
-                        event_bus.emit_sync(closed_event)
-                        
-                        # Also emit to legacy system
+                        # Emit to callbacks (removed global event_bus)
                         legacy_event = RealtimeEvent(
-                            event_type=EventType.CANDLE_CLOSED,
+                            event_type='CANDLE_CLOSED',  # Using string instead of Enum
                             timeframe=candle.timeframe,
                             data=candle
                         )

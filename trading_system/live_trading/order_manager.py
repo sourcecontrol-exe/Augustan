@@ -14,7 +14,9 @@ from enum import Enum
 from loguru import logger
 import ccxt
 
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
+from ..core.exceptions import OrderError, NetworkError, handle_exception
+from ..core.logging_config import StructuredLogger
 from ..core.position_state import SignalType
 
 
@@ -96,23 +98,32 @@ class OrderManager:
     6. Support multiple order types (market, limit, stop)
     """
     
-    def __init__(self, config_path: Optional[str] = None, testnet: bool = None):
+    def __init__(self, config_path: Optional[str] = None, testnet: bool = None,
+                 config_manager: Optional[ConfigManager] = None):
         """
         Initialize Order Manager.
         
         Args:
-            config_path: Path to configuration file
+            config_path: Path to configuration file (deprecated, use config_manager)
             testnet: If True, use testnet for all orders (defaults to environment config)
+            config_manager: Configuration manager instance (preferred over config_path)
         """
         self.config_path = config_path
         
-        # Initialize configuration first
-        self.config_manager = get_config_manager(config_path)
+        # Initialize configuration - use dependency injection if provided
+        if config_manager is None:
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing()
+        else:
+            self.config_manager = config_manager
         
-        # Use environment variables with fallbacks
-        self.testnet = testnet if testnet is not None else self.config_manager.get_environment_config().exchange.binance_testnet
+        # Use configuration values
+        self.testnet = testnet if testnet is not None else self.config_manager.is_paper_trading
         
-        self.exchanges_config = self.config_manager.get_all_exchange_configs()
+        # Get exchange configs - handle both old and new structure
+        self.exchanges_config = {}  # Will be populated in _init_exchanges
         
         # Initialize exchange connections
         self.exchanges: Dict[str, ccxt.Exchange] = {}
@@ -134,56 +145,40 @@ class OrderManager:
     
     def _init_exchanges(self):
         """Initialize exchange connections."""
-        for exchange_name, config in self.exchanges_config.items():
-            if exchange_name == "volume_settings" or exchange_name == "job_settings" or exchange_name == "risk_management" or exchange_name == "data_fetching" or exchange_name == "signal_generation":
-                continue
-                
-            if not config.get('enabled', False):
-                continue
+        # Initialize Binance by default
+        try:
+            exchange_name = 'binance'
+            exchange_class = ccxt.binance
+            options = {
+                'defaultType': 'future',
+                'sandbox': self.testnet,
+                'rateLimit': 1200,
+                'enableRateLimit': True,
+            }
             
-            try:
-                # Initialize exchange
-                if exchange_name == 'binance':
-                    exchange_class = ccxt.binance
-                    options = {
-                        'defaultType': 'future',
-                        'sandbox': self.testnet,
-                        'rateLimit': 1200,
-                        'enableRateLimit': True,
+            # Get API credentials from environment or config
+            # Note: This assumes credentials are available via environment variables
+            # For refactored version, we'll initialize without credentials (paper trading)
+            
+            # Configure testnet URLs if needed
+            if self.testnet:
+                options['urls'] = {
+                    'api': {
+                        'public': 'https://testnet.binance.vision/api/v3',
+                        'private': 'https://testnet.binance.vision/api/v3',
+                        'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
+                        'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
+                        'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
+                        'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
                     }
-                    
-                    # Add API credentials from environment variables first, then config
-                    env_credentials = self.config_manager.get_exchange_credentials('binance')
-                    if env_credentials.get('api_key'):
-                        options['apiKey'] = env_credentials['api_key']
-                    elif 'api_key' in config:
-                        options['apiKey'] = config['api_key']
-                    
-                    if env_credentials.get('secret'):
-                        options['secret'] = env_credentials['secret']
-                    elif 'secret' in config:
-                        options['secret'] = config['secret']
-                    
-                    # Configure testnet URLs if needed
-                    if self.testnet:
-                        options['urls'] = {
-                            'api': {
-                                'public': 'https://testnet.binance.vision/api/v3',
-                                'private': 'https://testnet.binance.vision/api/v3',
-                                'fapiPublic': 'https://testnet.binancefuture.com/fapi/v1',
-                                'fapiPrivate': 'https://testnet.binancefuture.com/fapi/v1',
-                                'fapiPublicV2': 'https://testnet.binancefuture.com/fapi/v2',
-                                'fapiPrivateV2': 'https://testnet.binancefuture.com/fapi/v2',
-                            }
-                        }
-                        options['fetchCurrencies'] = False
-                
-                exchange = exchange_class(options)
-                self.exchanges[exchange_name] = exchange
-                logger.info(f"Initialized {exchange_name} exchange (testnet: {self.testnet})")
-                
-            except Exception as e:
-                logger.error(f"Failed to initialize {exchange_name}: {e}")
+                }
+                options['fetchCurrencies'] = False
+            
+            exchange = exchange_class(options)
+            self.exchanges[exchange_name] = exchange
+            logger.info(f"Initialized {exchange_name} exchange (testnet: {self.testnet})")
+        except Exception as e:
+            logger.error(f"Failed to initialize {exchange_name}: {e}")
     
     def add_order_callback(self, callback: Callable[[str, OrderResult], None]):
         """Add callback for order status changes."""
@@ -476,7 +471,8 @@ class OrderManager:
                 time.sleep(10)  # Check every 10 seconds
                 
             except Exception as e:
-                logger.error(f"Order monitoring error: {e}")
+                trading_error = handle_exception(e, context={'operation': 'order_monitoring'})
+                StructuredLogger.log_error(trading_error)
                 time.sleep(30)  # Wait longer on error
     
     def _update_order_statuses(self):

@@ -9,7 +9,9 @@ from loguru import logger
 import ta
 
 from ..core.position_state import EnhancedSignal, SignalType, PositionState, PositionManager
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
+from ..core.exceptions import SignalGenerationError
+from ..core.logging_config import StructuredLogger
 
 
 class LiveSignalProcessor:
@@ -23,10 +25,25 @@ class LiveSignalProcessor:
     - Signal confidence scoring
     """
     
-    def __init__(self, config_path: Optional[str] = None):
-        """Initialize signal processor."""
-        self.config_manager = get_config_manager(config_path)
-        self.signal_config = self.config_manager.get_signal_generation_config()
+    def __init__(self, config_path: Optional[str] = None, 
+                 config_manager: Optional[ConfigManager] = None):
+        """
+        Initialize signal processor.
+        
+        Args:
+            config_path: Path to config file (deprecated, use config_manager)
+            config_manager: Configuration manager instance
+        """
+        # Use dependency injection if provided
+        if config_manager is None:
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing()
+        else:
+            self.config_manager = config_manager
+        
+        self.signal_config = self.config_manager.signal_generation
         self.position_manager = PositionManager()
         
         logger.info("LiveSignalProcessor initialized with real-time signal generation")
@@ -58,7 +75,12 @@ class LiveSignalProcessor:
             signals.extend(macd_signals)
             
         except Exception as e:
-            logger.error(f"Error generating signals for {symbol}: {e}")
+            trading_error = SignalGenerationError(
+                f"Error generating signals for {symbol}",
+                error_code="SIGNAL_GENERATION_ERROR",
+                details={'symbol': symbol, 'error': str(e)}
+            )
+            StructuredLogger.log_error(trading_error)
         
         return signals
     
@@ -114,7 +136,12 @@ class LiveSignalProcessor:
                                f"RSI: {current_rsi:.1f}, Confidence: {confidence:.2f}")
         
         except Exception as e:
-            logger.error(f"RSI signal generation error for {symbol}: {e}")
+            trading_error = SignalGenerationError(
+                f"RSI signal generation error for {symbol}",
+                error_code="RSI_ERROR",
+                details={'symbol': symbol, 'error': str(e)}
+            )
+            StructuredLogger.log_error(trading_error)
         
         return signals
     
@@ -195,7 +222,12 @@ class LiveSignalProcessor:
                                f"Confidence: {confidence:.2f}")
         
         except Exception as e:
-            logger.error(f"MACD signal generation error for {symbol}: {e}")
+            trading_error = SignalGenerationError(
+                f"MACD signal generation error for {symbol}",
+                error_code="MACD_ERROR",
+                details={'symbol': symbol, 'error': str(e)}
+            )
+            StructuredLogger.log_error(trading_error)
         
         return signals
     
@@ -261,5 +293,10 @@ class LiveSignalProcessor:
             return indicators
             
         except Exception as e:
-            logger.error(f"Error calculating indicators for {symbol}: {e}")
+            trading_error = SignalGenerationError(
+                f"Error calculating indicators for {symbol}",
+                error_code="INDICATOR_ERROR",
+                details={'symbol': symbol, 'error': str(e)}
+            )
+            StructuredLogger.log_error(trading_error)
             return {}

@@ -12,7 +12,9 @@ from loguru import logger
 from ..data_feeder.realtime_feeder import RealtimeFeeder, RealtimeCandle, create_realtime_feeder
 from ..risk_manager.portfolio_manager import PortfolioManager
 from ..core.position_state import PositionManager, EnhancedSignal, SignalType, PositionState
-from ..core.config_manager import get_config_manager
+from ..core.config_manager_refactored import ConfigManager
+from ..core.exceptions import OrderError, NetworkError, handle_exception
+from ..core.logging_config import StructuredLogger
 from .signal_processor import LiveSignalProcessor
 from .order_manager import OrderManager, OrderRequest, OrderType, OrderStatus
 
@@ -33,24 +35,35 @@ class LiveTradingEngine:
     """
     
     def __init__(self, watchlist: List[str] = None, initial_balance: float = None, 
-                 config_path: Optional[str] = None, paper_trading: bool = None):
+                 config_path: Optional[str] = None, paper_trading: bool = None,
+                 config_manager: Optional[ConfigManager] = None):
         """
         Initialize Live Trading Engine.
         
         Args:
             watchlist: List of symbols to trade (defaults to environment config)
             initial_balance: Starting account balance (defaults to environment config)
-            config_path: Configuration file path
+            config_path: Configuration file path (deprecated, use config_manager)
             paper_trading: If True, simulate trades without real execution (defaults to environment config)
+            config_manager: Configuration manager instance (preferred over config_path)
         """
-        # Initialize configuration first
-        self.config_manager = get_config_manager(config_path)
+        # Initialize configuration - use dependency injection if provided
+        if config_manager is None:
+            # Backward compatibility: create from config_path or use testing config
+            if config_path:
+                self.config_manager = ConfigManager.create(config_path)
+            else:
+                self.config_manager = ConfigManager.create_for_testing(
+                    overrides={'risk_management': {'default_budget': initial_balance or 10000.0}}
+                )
+        else:
+            self.config_manager = config_manager
         
-        # Use environment variables with fallbacks
-        self.watchlist = watchlist or self.config_manager.get_trading_symbols()
-        self.initial_balance = initial_balance or self.config_manager.get_initial_balance()
-        self.paper_trading = paper_trading if paper_trading is not None else self.config_manager.is_paper_trading()
-        self.signal_config = self.config_manager.get_signal_generation_config()
+        # Extract configuration values
+        self.watchlist = watchlist or ['BTC/USDT', 'ETH/USDT']  # Default watchlist
+        self.initial_balance = initial_balance or self.config_manager.risk_management.default_budget
+        self.paper_trading = paper_trading if paper_trading is not None else self.config_manager.is_paper_trading
+        self.signal_config = self.config_manager.signal_generation
         
         # Initialize core components
         # Create realtime config for first symbol in watchlist
@@ -158,7 +171,8 @@ class LiveTradingEngine:
                 self._process_signal(signal, candle.close)
                 
         except Exception as e:
-            logger.error(f"Error processing price update for {symbol}: {e}")
+            trading_error = handle_exception(e, context={'symbol': symbol, 'operation': 'price_update'})
+            StructuredLogger.log_error(trading_error)
     
     def _should_process_signal(self, symbol: str) -> bool:
         """Check if we should process signals for this symbol (cooldown logic)."""

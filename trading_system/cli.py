@@ -16,7 +16,7 @@ from .jobs.daily_volume_job import DailyVolumeJob
 from .jobs.enhanced_volume_job import EnhancedVolumeJob
 from .data_feeder.futures_data_feeder import FuturesDataFeeder
 from .core.position_sizing import RiskManagementConfig
-from .core.config_manager import get_config_manager
+from .core.config_manager_refactored import ConfigManager
 
 # Import new core components
 from .core.orderbook import OrderBook
@@ -28,7 +28,11 @@ from .core.paper_trading import PaperTradingEngine, PaperTradingConfig, OrderSid
 from .strategy_engine.scalping_strategies import ScalpingStrategyManager, ScalpingConfig, EMACrossoverStrategy, BollingerBandStrategy, VWAPReversionStrategy
 from .risk_manager.scalping_risk_manager import ScalpingRiskManager, ScalpingRiskConfig
 from .live_trading.scalping_engine import ScalpingTradingEngine
-from .core.event_system import event_bus, EventType
+
+# Note: Deprecated global event_bus is no longer used in this module
+
+
+# ConfigManager helper removed - will be created inline for each command
 
 
 # Auto-completion functions
@@ -236,7 +240,7 @@ def volume_analyze(ctx, exchanges, min_volume, max_rank, output, format, save, e
     
     try:
         # Initialize configuration manager
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         
         if enhanced:
             # Get risk config from centralized configuration with CLI overrides
@@ -399,7 +403,7 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
             click.echo("🔍 Fetching available balance from wallet...")
             
             # Get config to determine testnet setting
-            config_manager = get_config_manager(ctx.obj['config'])
+            config_manager = ConfigManager.create(ctx.obj['config'])
             binance_config = config_manager.get_exchange_config('binance')
             testnet = binance_config.get('testnet', True)
             
@@ -424,14 +428,14 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
                     click.echo(f"✅ Wallet balance: ${budget:.2f} USDT")
                 else:
                     # Fallback to config file default budget
-                    config_manager = get_config_manager(ctx.obj['config'])
+                    config_manager = ConfigManager.create(ctx.obj['config'])
                     risk_config = config_manager.get_risk_management_config()
                     budget = risk_config.max_budget
                     click.echo(f"⚠️  Could not fetch wallet balance, using config default: ${budget:.2f} USDT")
                     click.echo("   (Account info may not be available in testnet)")
             else:
                 # Fallback to config file default budget
-                config_manager = get_config_manager(ctx.obj['config'])
+                config_manager = ConfigManager.create(ctx.obj['config'])
                 risk_config = config_manager.get_risk_management_config()
                 budget = risk_config.max_budget
                 click.echo(f"⚠️  Could not fetch wallet balance, using config default: ${budget:.2f} USDT")
@@ -440,7 +444,7 @@ def position_analyze(ctx, symbol, budget, risk_percent, leverage, stop_loss_perc
             click.echo(f"💰 Using specified budget: ${budget:.2f} USDT")
         
         # Initialize configuration manager and get risk config
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         risk_config = config_manager.get_risk_management_config(
             budget_override=budget,
             risk_override=risk_percent / 100.0
@@ -532,7 +536,7 @@ def position_tradeable(ctx, budget, risk_percent, limit):
     
     try:
         # Initialize configuration manager and get risk config
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         risk_config = config_manager.get_risk_management_config(
             budget_override=budget,
             risk_override=risk_percent / 100.0
@@ -835,7 +839,7 @@ def config(ctx):
 def config_show(ctx, section):
     """Show current configuration."""
     try:
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         
         if section:
             # Show specific section
@@ -984,7 +988,7 @@ def config_switch(ctx, mode):
 def config_update(ctx, section, **kwargs):
     """Update configuration settings."""
     try:
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         
         # Filter out None values and convert CLI options to config keys
         key_mapping = {
@@ -1092,7 +1096,7 @@ def dashboard(ctx, refresh):
             click.echo(f"\n⏱️  Refreshing in {refresh} seconds... (Ctrl+C to exit)")
             
             import time
-            time.sleep(refresh)
+            time.sleep(refresh)  # OK for CLI blocking operations
             
     except KeyboardInterrupt:
         click.echo("\n👋 Dashboard closed")
@@ -1309,7 +1313,7 @@ def live_test(ctx):
     
     try:
         # Test configuration
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         risk_config = config_manager.get_risk_management_config()
         click.echo(f"✅ Configuration loaded - Max risk: {risk_config.max_risk_per_trade:.3%}")
         
@@ -2202,9 +2206,10 @@ def status():
     try:
         click.echo(f"📊 Scalping Engine Status")
         
-        # Check event bus status
-        queue_size = event_bus.get_queue_size()
-        subscriptions = event_bus.get_subscription_count()
+        # Check event bus status (deprecated - event system refactored)
+        # Note: Event bus is now injected via dependency injection
+        queue_size = 0  # Not available in refactored version
+        subscriptions = 0  # Not available in refactored version
         
         click.echo(f"\n🔄 Event System:")
         click.echo(f"  Queue Size: {queue_size}")
@@ -2584,7 +2589,7 @@ def system_validate(ctx):
         click.echo("🔍 Validating system...")
         
         # Validate config
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         click.echo("✅ Configuration loaded")
         
         # Validate risk config
@@ -2640,7 +2645,7 @@ def system_info(ctx):
         click.echo(f"   • Augustan Version: 1.0.0")
         
         # Show config info
-        config_manager = get_config_manager(ctx.obj['config'])
+        config_manager = ConfigManager.create(ctx.obj['config'])
         click.echo(f"   • Config File: {ctx.obj['config']}")
         click.echo(f"   • Trading Mode: {ctx.obj['mode'] or 'default'}")
         

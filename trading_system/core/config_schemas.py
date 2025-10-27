@@ -4,7 +4,7 @@ Configuration Schemas using Pydantic for strong typing and validation.
 This module provides strongly-typed configuration schemas with validation,
 documentation, and type safety using Pydantic.
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field, validator
 from pathlib import Path
 
@@ -19,12 +19,12 @@ class ExchangeCredentials(BaseModel):
 
 class BinanceSpotConfig(ExchangeCredentials):
     """Binance Spot Exchange configuration."""
-    exchange_type: str = Field("spot", const=True)
+    exchange_type: str = "spot"
 
 
 class BinanceFuturesConfig(ExchangeCredentials):
     """Binance Futures Exchange configuration."""
-    exchange_type: str = Field("futures", const=True)
+    exchange_type: str = "futures"
 
 
 class ExchangeConfig(BaseModel):
@@ -108,7 +108,7 @@ class RiskManagementConfig(BaseModel):
 
 class ExchangeConfig(BaseModel):
     """Exchange-specific configuration."""
-    binance: Optional[BinanceSpotConfig | BinanceFuturesConfig] = None
+    binance: Optional[Union[BinanceSpotConfig, BinanceFuturesConfig]] = None
     enabled: bool = Field(True, description="Enable exchange")
     testnet: bool = Field(True, description="Use testnet")
     api_key: Optional[str] = Field(None, description="API key (deprecated, use spot/futures)")

@@ -2,7 +2,13 @@
 Centralized Configuration Manager
 Provides singleton access to all application configuration.
 Now uses environment variables for secure configuration management.
+
+⚠️ DEPRECATED: This module uses a singleton pattern and is being replaced.
+Use trading_system.core.config_manager_refactored.ConfigManager instead.
+
+This module will be removed in a future version.
 """
+import warnings
 import json
 import os
 from pathlib import Path
@@ -13,6 +19,14 @@ from loguru import logger
 from .position_sizing import RiskManagementConfig
 from .env_config import get_environment_config, EnvironmentConfig
 from ..config_loader import SecureConfigLoader
+
+# Show deprecation warning
+warnings.warn(
+    "config_manager.ConfigManager is deprecated. "
+    "Use trading_system.core.config_manager_refactored.ConfigManager instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 @dataclass
