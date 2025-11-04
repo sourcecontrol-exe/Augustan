@@ -4,11 +4,9 @@ Data Feeder Module
 Provides data feeding capabilities for the trading system.
 """
 
-# Export old implementations for backward compatibility
+# Export implementations
 from .binance_feeder import BinanceDataFeeder
 from .binance_futures_feeder import BinanceFuturesFeeder
-
-# Export new refactored implementations
 from .exchange_client import (
     ExchangeClient,
     ExchangeCredentials,
@@ -120,11 +118,11 @@ def create_binance_futures_client(
 
 
 __all__ = [
-    # Old implementations (backward compatibility)
+    # Data feeders
     'BinanceDataFeeder',
     'BinanceFuturesFeeder',
     
-    # New implementations
+    # Exchange clients
     'ExchangeClient',
     'ExchangeCredentials',
     'ExchangeConfig',

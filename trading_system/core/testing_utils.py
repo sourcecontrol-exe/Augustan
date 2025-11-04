@@ -14,7 +14,7 @@ from unittest.mock import Mock, AsyncMock, MagicMock
 import pandas as pd
 
 from .models import MarketData, TradingSignal, StrategyType, SignalType
-from .config_manager_refactored import ConfigManager
+from .config_manager import ConfigManager
 
 
 class MockMarketDataFactory:
@@ -121,7 +121,7 @@ class MockConfigFactory:
                 return base
             config_dict = deep_merge(config_dict, overrides)
         
-        from .config_manager_refactored import ConfigManager
+        from .config_manager import ConfigManager
         from .config_loader import ConfigLoader
         
         # Create a minimal config

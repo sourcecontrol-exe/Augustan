@@ -14,7 +14,7 @@ from enum import Enum
 from loguru import logger
 import ccxt
 
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.exceptions import OrderError, NetworkError, handle_exception
 from ..core.logging_config import StructuredLogger
 from ..core.position_state import SignalType
@@ -158,7 +158,7 @@ class OrderManager:
             
             # Get API credentials from environment or config
             # Note: This assumes credentials are available via environment variables
-            # For refactored version, we'll initialize without credentials (paper trading)
+            # For paper trading, initialize without credentials
             
             # Configure testnet URLs if needed
             if self.testnet:

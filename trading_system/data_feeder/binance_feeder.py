@@ -63,7 +63,7 @@ class BinanceDataFeeder:
     def _get_spot_credentials(self, config_path: Optional[str] = None) -> tuple[str, str]:
         """Get spot API credentials from configuration."""
         try:
-            from ..core.config_manager_refactored import ConfigManager
+            from ..core.config_manager import ConfigManager
             
             # Create config manager
             if config_path:
@@ -71,8 +71,8 @@ class BinanceDataFeeder:
             else:
                 config_manager = ConfigManager.create_for_testing()
             
-            # Get credentials from refactored config
-            # Note: The refactored config doesn't expose exchange configs the same way
+            # Get credentials from config manager
+            # Note: Config manager exposes exchange configs via get_exchange_config()
             # This will return None, None for now since credentials should come from environment variables
             logger.info("Credentials should be provided via environment variables or constructor parameters")
             return None, None

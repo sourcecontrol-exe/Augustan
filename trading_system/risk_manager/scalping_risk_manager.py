@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from loguru import logger
 import ta
 
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.position_state import EnhancedSignal, PositionState, SignalType
 from ..core.position_sizing import ExchangeLimits
 from ..core.futures_models import ExchangeType

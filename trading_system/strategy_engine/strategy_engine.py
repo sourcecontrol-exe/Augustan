@@ -1,31 +1,77 @@
 """
-Strategy Engine - Runs multiple trading strategies and generates signals.
+Strategy Engine - Uses factory/registry pattern for dynamic loading.
+
+Features:
+- Dynamic strategy loading from configuration
+- No tight coupling to specific strategy classes
+- Easy to add/remove strategies
+- Plugin-based architecture
+- Testable with dependency injection
 """
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Any
 from loguru import logger
 
 from .base_strategy import BaseStrategy
-from .rsi_strategy import RSIStrategy
-from .macd_strategy import MACDStrategy
+from .strategy_factory import StrategyFactory, StrategyRegistry, StrategyConfig
 from ..core.models import MarketData, TradingSignal, StrategyType
 
 
 class StrategyEngine:
-    """Engine that runs multiple trading strategies."""
+    """
+    Strategy engine using factory/registry pattern.
     
-    def __init__(self):
-        """Initialize strategy engine with default strategies."""
-        self.strategies: Dict[StrategyType, BaseStrategy] = {
+    Features:
+    - Dynamic strategy loading from configuration
+    - No hardcoded strategy instantiation
+    - Easy to extend with custom strategies
+    - Configuration-driven behavior
+    """
+    
+    def __init__(
+        self,
+        strategy_configs: Optional[List[StrategyConfig]] = None,
+        strategies: Optional[Dict[StrategyType, BaseStrategy]] = None
+    ):
+        """
+        Initialize strategy engine.
+        
+        Args:
+            strategy_configs: Optional list of strategy configurations
+            strategies: Optional pre-created strategies (for testing)
+        """
+        if strategies is not None:
+            # Use provided strategies
+            self.strategies = strategies
+            logger.info(f"StrategyEngine initialized with {len(strategies)} provided strategies")
+        elif strategy_configs:
+            # Create strategies from configs
+            self.strategies = StrategyFactory.create_batch_from_configs(strategy_configs)
+            logger.info(f"StrategyEngine initialized with {len(self.strategies)} strategies from config")
+        else:
+            # Use default strategies
+            self.strategies = self._create_default_strategies()
+            logger.info(f"StrategyEngine initialized with {len(self.strategies)} default strategies")
+    
+    def _create_default_strategies(self) -> Dict[StrategyType, BaseStrategy]:
+        """Create default strategies."""
+        from .rsi_strategy import RSIStrategy
+        from .macd_strategy import MACDStrategy
+        
+        return {
             StrategyType.RSI: RSIStrategy(),
             StrategyType.MACD: MACDStrategy()
         }
-        
-        logger.info(f"StrategyEngine initialized with {len(self.strategies)} strategies")
     
     def add_strategy(self, strategy: BaseStrategy):
-        """Add a new strategy to the engine."""
+        """Add a strategy to the engine."""
         self.strategies[strategy.strategy_type] = strategy
         logger.info(f"Added strategy: {strategy.name}")
+    
+    def add_strategy_from_config(self, config: StrategyConfig):
+        """Add a strategy from configuration."""
+        strategy = StrategyFactory.create_from_config(config)
+        if strategy:
+            self.strategies[strategy.strategy_type] = strategy
     
     def remove_strategy(self, strategy_type: StrategyType):
         """Remove a strategy from the engine."""
@@ -33,8 +79,17 @@ class StrategyEngine:
             del self.strategies[strategy_type]
             logger.info(f"Removed strategy: {strategy_type.value}")
     
-    def run_single_strategy(self, strategy_type: StrategyType, 
-                          market_data: List[MarketData]) -> List[TradingSignal]:
+    def reload_strategies(self, strategy_configs: List[StrategyConfig]):
+        """Reload strategies from configuration."""
+        new_strategies = StrategyFactory.create_batch_from_configs(strategy_configs)
+        self.strategies.update(new_strategies)
+        logger.info("Strategies reloaded")
+    
+    def run_single_strategy(
+        self, 
+        strategy_type: StrategyType, 
+        market_data: List[MarketData]
+    ) -> List[TradingSignal]:
         """Run a single strategy on market data."""
         if strategy_type not in self.strategies:
             logger.warning(f"Strategy {strategy_type.value} not found")
@@ -48,8 +103,11 @@ class StrategyEngine:
             logger.error(f"Error running {strategy_type.value}: {e}")
             return []
     
-    def run_all_strategies(self, market_data: List[MarketData]) -> Dict[StrategyType, List[TradingSignal]]:
-        """Run all strategies on market data."""
+    def run_all_strategies(
+        self, 
+        market_data: List[MarketData]
+    ) -> Dict[StrategyType, List[TradingSignal]]:
+        """Run all enabled strategies on market data."""
         if not market_data:
             logger.warning("No market data provided")
             return {}
@@ -68,8 +126,10 @@ class StrategyEngine:
         
         return all_signals
     
-    def run_strategies_for_multiple_symbols(self, 
-                                          market_data_dict: Dict[str, List[MarketData]]) -> Dict[str, Dict[StrategyType, List[TradingSignal]]]:
+    def run_strategies_for_multiple_symbols(
+        self,
+        market_data_dict: Dict[str, List[MarketData]]
+    ) -> Dict[str, Dict[StrategyType, List[TradingSignal]]]:
         """Run all strategies for multiple symbols."""
         all_symbol_signals = {}
         
@@ -81,9 +141,11 @@ class StrategyEngine:
         logger.info(f"Completed strategy processing for {len(all_symbol_signals)} symbols")
         return all_symbol_signals
     
-    def get_latest_signals(self, 
-                          market_data_dict: Dict[str, List[MarketData]]) -> Dict[str, List[TradingSignal]]:
-        """Get the latest signals from all strategies for all symbols."""
+    def get_latest_signals(
+        self,
+        market_data_dict: Dict[str, List[MarketData]]
+    ) -> Dict[str, List[TradingSignal]]:
+        """Get the latest signals from all strategies."""
         all_signals = self.run_strategies_for_multiple_symbols(market_data_dict)
         
         latest_signals = {}
@@ -91,7 +153,6 @@ class StrategyEngine:
             symbol_latest = []
             for strategy_type, signals in strategy_signals.items():
                 if signals:
-                    # Get the most recent signal from each strategy
                     symbol_latest.extend(signals)
             
             if symbol_latest:
@@ -102,3 +163,51 @@ class StrategyEngine:
     def get_strategy_names(self) -> List[str]:
         """Get list of available strategy names."""
         return [strategy.name for strategy in self.strategies.values()]
+    
+    def get_strategy_types(self) -> List[StrategyType]:
+        """Get list of enabled strategy types."""
+        return list(self.strategies.keys())
+    
+    def is_strategy_enabled(self, strategy_type: StrategyType) -> bool:
+        """Check if a strategy is enabled."""
+        return strategy_type in self.strategies
+    
+    @classmethod
+    def from_config_dict(cls, config_dict: Dict[str, Any]) -> 'StrategyEngine':
+        """
+        Create strategy engine from configuration dictionary.
+        
+        Args:
+            config_dict: Configuration dictionary
+                Example: {
+                    "strategies": {
+                        "rsi": {"enabled": True, "parameters": {"period": 14}},
+                        "macd": {"enabled": True}
+                    }
+                }
+        
+        Returns:
+            StrategyEngine instance
+        """
+        strategies_config = config_dict.get('strategies', {})
+        strategies = StrategyFactory.create_from_config_dict(strategies_config)
+        return cls(strategies=strategies)
+
+
+# Backward compatibility
+# Create default engine instance
+_default_engine: Optional[StrategyEngine] = None
+
+
+def get_default_engine() -> StrategyEngine:
+    """Get or create default strategy engine."""
+    global _default_engine
+    if _default_engine is None:
+        _default_engine = StrategyEngine()
+    return _default_engine
+
+
+def set_default_engine(engine: StrategyEngine):
+    """Set the default strategy engine."""
+    global _default_engine
+    _default_engine = engine

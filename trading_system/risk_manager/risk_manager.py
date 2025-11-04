@@ -10,7 +10,7 @@ from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from loguru import logger
 
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.position_state import EnhancedSignal, PositionState
 from ..core.position_sizing import ExchangeLimits
 from ..core.futures_models import ExchangeType

@@ -15,7 +15,7 @@ from loguru import logger
 import ccxt
 from enum import Enum
 
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.resilient_fetcher import ResilientFetcher
 from ..core.exceptions import DataError, NetworkError
 from ..core.logging_config import StructuredLogger

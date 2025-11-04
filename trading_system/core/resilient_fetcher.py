@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 import ccxt
 
-from .config_manager_refactored import ConfigManager
+from .config_manager import ConfigManager
 
 
 @dataclass

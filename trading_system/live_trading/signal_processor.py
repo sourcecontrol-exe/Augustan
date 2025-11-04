@@ -9,7 +9,7 @@ from loguru import logger
 import ta
 
 from ..core.position_state import EnhancedSignal, SignalType, PositionState, PositionManager
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.exceptions import SignalGenerationError
 from ..core.logging_config import StructuredLogger
 

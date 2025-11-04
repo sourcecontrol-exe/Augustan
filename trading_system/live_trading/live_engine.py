@@ -12,7 +12,7 @@ from loguru import logger
 from ..data_feeder.realtime_feeder import RealtimeFeeder, RealtimeCandle, create_realtime_feeder
 from ..risk_manager.portfolio_manager import PortfolioManager
 from ..core.position_state import PositionManager, EnhancedSignal, SignalType, PositionState
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from ..core.exceptions import OrderError, NetworkError, handle_exception
 from ..core.logging_config import StructuredLogger
 from .signal_processor import LiveSignalProcessor

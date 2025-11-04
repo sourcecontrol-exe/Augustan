@@ -1,376 +1,246 @@
 """
-Centralized Configuration Manager
-Provides singleton access to all application configuration.
-Now uses environment variables for secure configuration management.
+Configuration Manager - Non-singleton with dependency injection.
 
-⚠️ DEPRECATED: This module uses a singleton pattern and is being replaced.
-Use trading_system.core.config_manager_refactored.ConfigManager instead.
+This configuration manager:
+- Uses dependency injection instead of singleton pattern
+- Acts as a structured container for configuration sections
+- Provides strongly-typed access via Pydantic models
+- Eliminates global mutable state
 
-This module will be removed in a future version.
+Usage:
+    # Create and inject at application entry point
+    from trading_system.core.config_manager import ConfigManager
+    from trading_system.core.config_loader import ConfigLoader
+    
+    config_loader = ConfigLoader(config_dir=Path("config"))
+    config_manager = ConfigManager(config_loader.load_application_config())
+    
+    # Inject into components
+    trading_engine = TradingEngine(config_manager)
 """
-import warnings
-import json
-import os
+from typing import Optional, Dict, Any
 from pathlib import Path
-from typing import Dict, Any, Optional
-from dataclasses import dataclass
 from loguru import logger
 
-from .position_sizing import RiskManagementConfig
-from .env_config import get_environment_config, EnvironmentConfig
-from ..config_loader import SecureConfigLoader
-
-# Show deprecation warning
-warnings.warn(
-    "config_manager.ConfigManager is deprecated. "
-    "Use trading_system.core.config_manager_refactored.ConfigManager instead.",
-    DeprecationWarning,
-    stacklevel=2
+from .config_schemas import (
+    ApplicationConfig,
+    RiskManagementConfig,
+    DataFetchingConfig,
+    SignalGenerationConfig,
+    VolumeSettings,
+    JobSettings,
 )
-
-
-@dataclass
-class DataFetchingConfig:
-    """Configuration for data fetching and retry logic."""
-    max_retries: int = 3
-    retry_delay: float = 1.0
-    backoff_multiplier: float = 2.0
-    timeout_seconds: int = 30
-    rate_limit_buffer: float = 1.2
-
-
-@dataclass
-class SignalGenerationConfig:
-    """Configuration for trading signal generation."""
-    rsi_period: int = 14
-    rsi_oversold: int = 30
-    rsi_overbought: int = 70
-    macd_fast: int = 12
-    macd_slow: int = 26
-    macd_signal: int = 9
-    min_signal_strength: float = 0.6
-    signal_cooldown_minutes: int = 15
-
-
-@dataclass
-class VolumeSettings:
-    """Volume analysis settings."""
-    min_volume_usd_24h: int = 1000000
-    min_volume_rank: int = 200
-    max_markets_per_exchange: int = 100
-
-
-@dataclass
-class JobSettings:
-    """Job execution settings."""
-    schedule_time: str = "09:00"
-    retention_days: int = 30
-    output_directory: str = "volume_data"
+from .config_loader import ConfigLoader
 
 
 class ConfigManager:
     """
-    Singleton configuration manager for the entire application.
+    Configuration Manager - Structured container for application configuration.
     
-    Now uses environment variables for secure configuration management.
-    Falls back to JSON config files for backward compatibility.
+    This class is a lightweight container that provides easy access to
+    strongly-typed configuration sections. It should be instantiated at the
+    application entry point and injected into components.
     
-    This ensures consistent configuration across all components:
-    - CLI commands
-    - Background jobs
-    - Data fetchers
-    - Signal generators
-    - Risk managers
+    Benefits:
+    - Testable: Easy to inject test configurations
+    - No global state: Each component gets its own view
+    - Clear dependencies: Explicit configuration passing
+    - Thread-safe: No shared mutable state
+    - Immutable: Configuration cannot be accidentally modified
+    
+    Example:
+        from trading_system.core.config_loader import ConfigLoader
+        from trading_system.core.config_manager import ConfigManager
+        
+        # Load configuration
+        loader = ConfigLoader()
+        app_config = loader.load_application_config("exchanges_config.json")
+        
+        # Create manager
+        manager = ConfigManager(app_config)
+        
+        # Inject into components
+        engine = TradingEngine(config_manager=manager)
     """
     
-    _instance: Optional['ConfigManager'] = None
-    _config_data: Optional[Dict[str, Any]] = None
-    _config_path: Optional[str] = None
-    _env_config: Optional[EnvironmentConfig] = None
-    
-    def __new__(cls, config_path: Optional[str] = None):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    def __init__(self, config_path: Optional[str] = None):
-        if self._config_data is None:
-            self._load_config(config_path)
-            self._load_environment_config()
-    
-    def _load_config(self, config_path: Optional[str] = None):
-        """Load configuration from JSON file with environment variable override."""
-        if config_path:
-            self._config_path = config_path
-        else:
-            # Default config path
-            current_dir = Path(__file__).parent.parent.parent
-            self._config_path = str(current_dir / "config" / "exchanges_config.json")
+    def __init__(self, app_config: ApplicationConfig):
+        """
+        Initialize the configuration manager with an application configuration.
         
-        # Use secure config loader
-        config_dir = str(Path(self._config_path).parent)
-        secure_loader = SecureConfigLoader(config_dir)
+        Args:
+            app_config: Complete application configuration (from ConfigLoader)
+        """
+        self._app_config = app_config
+        logger.info("ConfigManager initialized with application configuration")
+    
+    @classmethod
+    def create(
+        cls,
+        config_name: str = "exchanges_config.json",
+        config_dir: Optional[Path] = None,
+        overrides: Optional[Dict[str, Any]] = None
+    ) -> 'ConfigManager':
+        """
+        Factory method to create a ConfigManager from a config file.
         
-        try:
-            self._config_data = secure_loader.load_config(Path(self._config_path).name)
-            logger.info(f"Configuration loaded from {self._config_path} with environment variable override")
-        except Exception as e:
-            logger.warning(f"Error loading config: {e}. Using defaults.")
-            self._config_data = self._get_default_config()
+        Args:
+            config_name: Name of the configuration file
+            config_dir: Directory containing config files
+            overrides: Optional configuration overrides
+            
+        Returns:
+            Configured ConfigManager instance
+        """
+        loader = ConfigLoader(config_dir=config_dir)
+        app_config = loader.load_application_config(
+            config_name=config_name,
+            overrides=overrides
+        )
+        return cls(app_config)
     
-    def _load_environment_config(self):
-        """Load environment configuration."""
-        try:
-            self._env_config = get_environment_config()
-            logger.info(f"Environment configuration loaded: {self._env_config.environment}")
-        except Exception as e:
-            logger.warning(f"Error loading environment config: {e}. Using defaults.")
-            self._env_config = None
-    
-    def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration if file is missing or invalid."""
-        return {
-            "risk_management": {
-                "default_budget": 50.0,
-                "max_risk_per_trade": 0.002,
-                "min_safety_ratio": 1.5,
-                "default_leverage": 5,
-                "max_position_percent": 0.1,
-                "stop_loss_percent": 2.0,
-                "take_profit_percent": 4.0,
-                "max_positions": 5,
-                "emergency_stop_loss": 10.0
+    @classmethod
+    def create_for_testing(
+        cls,
+        overrides: Optional[Dict[str, Any]] = None
+    ) -> 'ConfigManager':
+        """
+        Create a ConfigManager for testing with overrides.
+        
+        Args:
+            overrides: Configuration overrides for testing
+            
+        Returns:
+            ConfigManager with test configuration
+        """
+        # Create a test configuration
+        test_config = {
+            'risk_management': {
+                'default_budget': 1000.0,
+                'max_risk_per_trade': 0.01,
+                'max_positions': 1,
             },
-            "data_fetching": {
-                "max_retries": 3,
-                "retry_delay": 1.0,
-                "backoff_multiplier": 2.0,
-                "timeout_seconds": 30,
-                "rate_limit_buffer": 1.2
+            'data_fetching': {
+                'max_retries': 1,
+                'timeout_seconds': 5,
             },
-            "signal_generation": {
-                "rsi_period": 14,
-                "rsi_oversold": 30,
-                "rsi_overbought": 70,
-                "macd_fast": 12,
-                "macd_slow": 26,
-                "macd_signal": 9,
-                "min_signal_strength": 0.6,
-                "signal_cooldown_minutes": 15
-            },
-            "volume_settings": {
-                "min_volume_usd_24h": 1000000,
-                "min_volume_rank": 200,
-                "max_markets_per_exchange": 100
-            },
-            "job_settings": {
-                "schedule_time": "09:00",
-                "retention_days": 30,
-                "output_directory": "volume_data"
-            }
+            'trading_mode': 'paper',
         }
-    
-    def get_risk_management_config(self, budget_override: Optional[float] = None,
-                                 risk_override: Optional[float] = None) -> RiskManagementConfig:
-        """Get risk management configuration with optional overrides."""
-        risk_data = self._config_data.get("risk_management", {})
         
-        return RiskManagementConfig(
-            max_budget=budget_override or risk_data.get("default_budget", 50.0),
-            max_risk_per_trade=risk_override or risk_data.get("max_risk_per_trade", 0.002),
-            min_safety_ratio=risk_data.get("min_safety_ratio", 1.5),
-            default_leverage=risk_data.get("default_leverage", 5),
-            max_position_percent=risk_data.get("max_position_percent", 0.1)
-        )
+        if overrides:
+            def deep_merge(base, override):
+                for key, value in override.items():
+                    if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+                        base[key] = deep_merge(base[key], value)
+                    else:
+                        base[key] = value
+                return base
+            test_config = deep_merge(test_config, overrides)
+        
+        # Create Pydantic model with defaults
+        app_config = ApplicationConfig(**test_config)
+        return cls(app_config)
     
-    def get_data_fetching_config(self) -> DataFetchingConfig:
+    # Properties for easy access to configuration sections
+    
+    @property
+    def risk_management(self) -> RiskManagementConfig:
+        """Get risk management configuration."""
+        return self._app_config.risk_management
+    
+    @property
+    def data_fetching(self) -> DataFetchingConfig:
         """Get data fetching configuration."""
-        data = self._config_data.get("data_fetching", {})
-        
-        return DataFetchingConfig(
-            max_retries=data.get("max_retries", 3),
-            retry_delay=data.get("retry_delay", 1.0),
-            backoff_multiplier=data.get("backoff_multiplier", 2.0),
-            timeout_seconds=data.get("timeout_seconds", 30),
-            rate_limit_buffer=data.get("rate_limit_buffer", 1.2)
-        )
+        return self._app_config.data_fetching
     
-    def get_signal_generation_config(self) -> SignalGenerationConfig:
+    @property
+    def signal_generation(self) -> SignalGenerationConfig:
         """Get signal generation configuration."""
-        data = self._config_data.get("signal_generation", {})
+        return self._app_config.signal_generation
+    
+    @property
+    def volume_settings(self) -> VolumeSettings:
+        """Get volume settings."""
+        return self._app_config.volume_settings
+    
+    @property
+    def job_settings(self) -> JobSettings:
+        """Get job settings."""
+        return self._app_config.job_settings
+    
+    @property
+    def trading_mode(self) -> str:
+        """Get current trading mode (paper or live)."""
+        return self._app_config.trading_mode
+    
+    @property
+    def is_paper_trading(self) -> bool:
+        """Check if in paper trading mode."""
+        return self._app_config.trading_mode == "paper"
+    
+    @property
+    def is_live_trading(self) -> bool:
+        """Check if in live trading mode."""
+        return self._app_config.trading_mode == "live"
+    
+    def get_exchange_config(self, exchange_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get configuration for a specific exchange.
         
-        return SignalGenerationConfig(
-            rsi_period=data.get("rsi_period", 14),
-            rsi_oversold=data.get("rsi_oversold", 30),
-            rsi_overbought=data.get("rsi_overbought", 70),
-            macd_fast=data.get("macd_fast", 12),
-            macd_slow=data.get("macd_slow", 26),
-            macd_signal=data.get("macd_signal", 9),
-            min_signal_strength=data.get("min_signal_strength", 0.6),
-            signal_cooldown_minutes=data.get("signal_cooldown_minutes", 15)
-        )
+        Args:
+            exchange_name: Name of the exchange
+            
+        Returns:
+            Exchange configuration dictionary or None
+        """
+        return self._app_config.exchanges.get(exchange_name)
     
-    def get_volume_settings(self) -> VolumeSettings:
-        """Get volume analysis settings."""
-        data = self._config_data.get("volume_settings", {})
-        
-        return VolumeSettings(
-            min_volume_usd_24h=data.get("min_volume_usd_24h", 1000000),
-            min_volume_rank=data.get("min_volume_rank", 200),
-            max_markets_per_exchange=data.get("max_markets_per_exchange", 100)
-        )
-    
-    def get_job_settings(self) -> JobSettings:
-        """Get job execution settings."""
-        data = self._config_data.get("job_settings", {})
-        
-        return JobSettings(
-            schedule_time=data.get("schedule_time", "09:00"),
-            retention_days=data.get("retention_days", 30),
-            output_directory=data.get("output_directory", "volume_data")
-        )
-    
-    def get_exchange_config(self, exchange_name: str) -> Dict[str, Any]:
-        """Get configuration for a specific exchange."""
-        return self._config_data.get(exchange_name, {})
-    
-    def get_all_exchange_configs(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_exchange_configs(self) -> Dict[str, Any]:
         """Get all exchange configurations."""
-        exchanges = {}
-        for key, value in self._config_data.items():
-            if isinstance(value, dict) and value.get("enabled") is not None:
-                exchanges[key] = value
-        return exchanges
-    
-    def reload_config(self, config_path: Optional[str] = None):
-        """Reload configuration from file."""
-        self._config_data = None
-        self._load_config(config_path)
+        return self._app_config.exchanges
     
     def get_raw_config(self) -> Dict[str, Any]:
-        """Get raw configuration data."""
-        return self._config_data.copy()
+        """Get raw configuration as dictionary (for serialization)."""
+        return self._app_config.dict(exclude_none=True)
     
-    def update_config(self, section: str, updates: Dict[str, Any]):
-        """Update configuration section and save to file."""
-        if section not in self._config_data:
-            self._config_data[section] = {}
+    def reload(self, config_name: str, config_dir: Optional[Path] = None):
+        """
+        Reload configuration from file.
         
-        self._config_data[section].update(updates)
-        
-        # Save to file
-        try:
-            with open(self._config_path, 'w') as f:
-                json.dump(self._config_data, f, indent=2)
-            logger.info(f"Configuration updated and saved to {self._config_path}")
-        except Exception as e:
-            logger.error(f"Failed to save configuration: {e}")
+        Args:
+            config_name: Name of the configuration file
+            config_dir: Directory containing config files
+        """
+        logger.info(f"Reloading configuration from {config_name}")
+        loader = ConfigLoader(config_dir=config_dir)
+        self._app_config = loader.load_application_config(config_name)
+        logger.info("Configuration reloaded successfully")
     
-    @classmethod
-    def get_instance(cls, config_path: Optional[str] = None) -> 'ConfigManager':
-        """Get the singleton instance."""
-        if cls._instance is None:
-            cls._instance = cls(config_path)
-        return cls._instance
-    
-    @classmethod
-    def reset_instance(cls):
-        """Reset the singleton instance (useful for testing)."""
-        cls._instance = None
-        cls._config_data = None
-        cls._env_config = None
-    
-    # Environment-based configuration methods
-    def get_environment_config(self) -> Optional[EnvironmentConfig]:
-        """Get the environment configuration."""
-        return self._env_config
-    
-    def get_exchange_credentials(self, exchange_name: str) -> Dict[str, str]:
-        """Get exchange credentials from environment variables."""
-        if self._env_config:
-            return self._env_config.get_exchange_credentials(exchange_name)
-        return {}
-    
-    def is_paper_trading(self) -> bool:
-        """Check if paper trading is enabled via environment variables."""
-        if self._env_config:
-            return self._env_config.trading.paper_trading
-        return True  # Default to paper trading for safety
-    
-    def is_live_trading(self) -> bool:
-        """Check if live trading is enabled via environment variables."""
-        if self._env_config:
-            return self._env_config.trading.live_trading
-        return False  # Default to no live trading for safety
-    
-    def get_trading_symbols(self) -> list:
-        """Get trading symbols from environment variables."""
-        if self._env_config:
-            return self._env_config.trading.trading_symbols
-        return ['BTC/USDT', 'ETH/USDT']  # Default symbols
-    
-    def get_initial_balance(self) -> float:
-        """Get initial balance from environment variables."""
-        if self._env_config:
-            return self._env_config.trading.initial_balance
-        return 10000.0  # Default balance
-    
-    def get_max_risk_per_trade(self) -> float:
-        """Get max risk per trade from environment variables."""
-        if self._env_config:
-            return self._env_config.trading.max_risk_per_trade
-        return 0.01  # Default 1%
-    
-    def get_max_portfolio_risk(self) -> float:
-        """Get max portfolio risk from environment variables."""
-        if self._env_config:
-            return self._env_config.trading.max_portfolio_risk
-        return 0.1  # Default 10%
-    
-    def get_data_timeframes(self) -> list:
-        """Get data timeframes from environment variables."""
-        if self._env_config:
-            return self._env_config.data.data_timeframes
-        return ['1m', '3m', '5m']  # Default timeframes
-    
-    def get_log_level(self) -> str:
-        """Get log level from environment variables."""
-        if self._env_config:
-            return self._env_config.logging.log_level
-        return 'INFO'  # Default log level
-    
-    def get_database_config(self) -> Dict[str, Any]:
-        """Get database configuration from environment variables."""
-        if self._env_config:
-            db_config = self._env_config.database
-            return {
-                'type': db_config.database_type,
-                'sqlite_path': db_config.sqlite_path,
-                'postgresql_host': db_config.postgresql_host,
-                'postgresql_port': db_config.postgresql_port,
-                'postgresql_database': db_config.postgresql_database,
-                'postgresql_username': db_config.postgresql_username,
-                'postgresql_password': db_config.postgresql_password,
-                'mysql_host': db_config.mysql_host,
-                'mysql_port': db_config.mysql_port,
-                'mysql_database': db_config.mysql_database,
-                'mysql_username': db_config.mysql_username,
-                'mysql_password': db_config.mysql_password,
-            }
-        return {'type': 'sqlite', 'sqlite_path': './data/trading.db'}
-    
-    def validate_environment(self) -> bool:
-        """Validate environment configuration."""
-        if self._env_config:
-            return self._env_config.validate_configuration()['valid']
-        return True
-    
-    def reload_environment_config(self):
-        """Reload environment configuration."""
-        self._load_environment_config()
+    def __repr__(self) -> str:
+        """String representation of the configuration manager."""
+        return (
+            f"ConfigManager("
+            f"mode={self.trading_mode}, "
+            f"budget={self.risk_management.default_budget}, "
+            f"risk_per_trade={self.risk_management.max_risk_per_trade}"
+            f")"
+        )
 
 
-# Global function for easy access
+# Global function for backward compatibility
 def get_config_manager(config_path: Optional[str] = None) -> ConfigManager:
-    """Get the global configuration manager instance."""
-    return ConfigManager.get_instance(config_path)
+    """
+    Get a configuration manager instance (for backward compatibility).
+    
+    Note: This function creates a new instance. For dependency injection,
+    prefer creating ConfigManager directly.
+    
+    Args:
+        config_path: Optional path to config file
+        
+    Returns:
+        ConfigManager instance
+    """
+    if config_path:
+        return ConfigManager.create(config_name=Path(config_path).name, 
+                                    config_dir=Path(config_path).parent)
+    return ConfigManager.create()

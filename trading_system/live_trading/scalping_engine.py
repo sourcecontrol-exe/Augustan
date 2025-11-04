@@ -11,7 +11,7 @@ from ..data_feeder.realtime_feeder import RealtimeFeeder, create_realtime_feeder
 from ..risk_manager.scalping_risk_manager import ScalpingRiskManager, ScalpingRiskConfig
 from ..strategy_engine.scalping_strategies import ScalpingStrategyManager, ScalpingConfig
 from ..core.position_state import EnhancedSignal, SignalType
-from ..core.config_manager_refactored import ConfigManager
+from ..core.config_manager import ConfigManager
 from .order_manager import OrderManager, OrderRequest, OrderType, OrderStatus
 from .freqtrade_paper_engine import FreqtradePaperEngine, PaperTradingConfig
 
